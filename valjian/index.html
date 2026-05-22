@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jean ValjIAn | Os Miseráveis em dados</title>
+  <meta name="description" content="Uma leitura visual e textual de Os Miseráveis, de Victor Hugo, com capítulos, personagens, cenários, cidades e um chat via Gemini restrito ao ponto de vista de Jean Valjean.">
+  <meta property="og:title" content="Jean ValjIAn | Os Miseráveis em dados">
+  <meta property="og:description" content="Uma leitura visual e textual de Os Miseráveis, de Victor Hugo, com capítulos, personagens, cenários, cidades e um chat via Gemini restrito ao ponto de vista de Jean Valjean.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://luizftoledo.github.io/valjIAn/">
+  <meta property="og:image" content="https://luizftoledo.github.io/valjIAn/assets/os_miseraveis_imagens/barricade_scene.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/png" href="../favicon.png">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="https://luizftoledo.github.io/">Luiz Fernando Toledo</a>
+      <nav class="section-nav">
+        <a href="#characters">Personagens</a>
+        <a href="#interactions">Relações</a>
+        <a href="#places">Lugares</a>
+        <a href="#chapters">Capítulos</a>
+        <a href="#chat">Jean Valjean</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <figure class="hero-banner">
+          <img src="./assets/os_miseraveis_imagens/barricade_scene.png" alt="Cena coletiva inspirada na barricada de Os Miseráveis." class="hero-banner-image">
+        </figure>
+        <div class="hero-copy">
+          <p class="eyebrow">luizftoledo.github.io/valjIAn</p>
+          <h1>Os Miseráveis em dados</h1>
+          <p class="dek">
+            Esta página revisita a obra <em>Os Miseráveis</em> a partir de uma análise quantitativa de texto e
+            relação entre nomes, pessoas e lugares. É uma experiência vibe coding, com uso do Codex e
+            supervisão minha. Se encontrar erros, <a href="https://luizftoledo.github.io/">por favor me avise</a>!
+            A ideia aqui é explorar uma tecnologia que me interessa com um tema que gosto.
+          </p>
+          <p class="hero-structure" id="hero-structure"></p>
+          <div class="hero-stats" id="hero-stats" aria-label="Estatísticas principais"></div>
+        </div>
+      </section>
+
+      <section class="section" id="overview">
+        <div class="section-head">
+          <p class="section-label">Arco geral</p>
+          <h2>Que domina cada parte do livro</h2>
+          <p>
+            Os gráficos abaixo mostram quantos capítulos e palavras há em cada parte, quais personagens
+            aparecem mais em cada bloco e como o centro do romance muda ao longo do livro.
+          </p>
+        </div>
+        <div class="part-ribbon" id="part-ribbon"></div>
+      </section>
+
+      <section class="section" id="characters">
+        <div class="section-head">
+          <p class="section-label">Personagens</p>
+          <h2>Quem carrega a narrativa</h2>
+          <p>
+            O ranking combina menções e cobertura de capítulos. A cor indica uma divisão operacional:
+            principais, secundários e apoio.
+          </p>
+        </div>
+        <div class="viz-card viz-wide">
+          <div class="viz-header">
+            <div>
+              <h3>Presença por personagem</h3>
+              <p>A linha de livros usa uma escala fixa: 1 livrinho = 100 menções do nome no texto. Quando sobra menos de 100, o último livro aparece só parcialmente. A barra de capítulos mostra em quantos dos 364 capítulos cada personagem aparece.</p>
+            </div>
+          </div>
+          <div id="character-bars" class="viz-body"></div>
+        </div>
+      </section>
+
+      <section class="section" id="interactions">
+        <div class="section-head">
+          <p class="section-label">Interações</p>
+          <h2>Quem se relaciona com quem?</h2>
+          <p>Veja personagens que aparecem em uma mesma frase (e quantas vezes).</p>
+        </div>
+        <div class="viz-card viz-wide">
+          <div class="viz-header">
+            <div>
+              <h3>As relações mais densas aparecem quando os nomes dividem a mesma frase</h3>
+              <p>Nó maior = mais menções. Linha mais grossa = mais frases em que os dois nomes aparecem juntos. Para abrir passagens, use os botões do bloco abaixo.</p>
+            </div>
+          </div>
+          <div id="network-chart" class="viz-body network-body"></div>
+        </div>
+        <div class="viz-card interaction-detail-card">
+          <div class="viz-header">
+            <div>
+              <h3>Escolha uma relação e veja passagens</h3>
+              <p>Use os botões abaixo para escolher um par. Quando uma relação é selecionada, os dois nomes ficam destacados nos trechos.</p>
+            </div>
+          </div>
+          <div id="interaction-detail" class="interaction-detail"></div>
+        </div>
+      </section>
+
+      <section class="section section-grid" id="places">
+        <div class="section-head">
+          <p class="section-label">Lugares</p>
+          <h2>Os cenários da obra</h2>
+          <p>
+            Menções contam quantas vezes o nome da cidade aparece no texto; capítulos contam em quantos
+            capítulos ela surge ao menos uma vez. Ao lado, uma lista separa cenários recorrentes como
+            convento, barricada e galés.
+          </p>
+        </div>
+        <div class="viz-card">
+          <div class="viz-header">
+            <div>
+              <h3>Cidades mencionadas</h3>
+              <p>Cada card reúne volume de menções, presença ao longo do romance e uma passagem que ajuda a situar a cidade no enredo.</p>
+            </div>
+          </div>
+          <div id="city-board" class="city-board" aria-label="Cidades citadas no romance"></div>
+        </div>
+        <div class="side-card">
+          <h3>Cenários mais citados</h3>
+          <div id="settings-list" class="settings-list"></div>
+        </div>
+      </section>
+
+      <section class="section" id="descriptors">
+        <div class="section-head">
+          <p class="section-label">Descrições</p>
+          <h2>Como os personagens são descritos na obra?</h2>
+          <p>Veja os adjetivos que mais aparecem ao lado de cada nome.</p>
+        </div>
+        <div class="viz-card viz-wide">
+          <div class="viz-header">
+            <div>
+              <h3>Descritores por personagem</h3>
+              <p>Cada bloco reúne descritores explícitos ligados ao personagem; clique no termo para trocar o trecho de exemplo e ver a palavra destacada na passagem.</p>
+            </div>
+          </div>
+          <div id="descriptor-grid" class="descriptor-grid"></div>
+        </div>
+      </section>
+
+      <section class="section critical-section" id="critical-reading">
+        <div class="section-head">
+          <p class="section-label">Leitura crítica</p>
+          <h2>O que a crítica acadêmica ajuda a ver no romance</h2>
+          <p>
+            Cada bloco cruza um argumento da crítica com evidências do romance: termos do livro, passagens da
+            edição usada nesta leitura e sinais que já aparecem nos dados do site.
+          </p>
+        </div>
+        <div class="critical-grid" id="critical-grid"></div>
+      </section>
+
+      <section class="section chapter-section" id="chapters">
+        <div class="section-head">
+          <p class="section-label">Capítulo a capítulo</p>
+          <h2>Linha do tempo dos capítulos</h2>
+          <p>
+            Filtre por parte ou livro interno e deslize pela sequência dos capítulos. Cada ponto da linha do
+            tempo destaca palavras fortes do capítulo, personagens em foco e trechos que ajudam a situar a cena.
+          </p>
+        </div>
+        <div class="chapter-toolbar chapter-controls">
+          <div class="control-group">
+            <label for="part-filter">Parte</label>
+            <select id="part-filter">
+              <option value="all">Todas</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="book-filter">Livro interno</label>
+            <select id="book-filter">
+              <option value="all">Todos</option>
+            </select>
+          </div>
+          <div class="control-group chapter-search-group">
+            <label for="chapter-search">Buscar por título, personagem, lugar ou palavra</label>
+            <input id="chapter-search" type="search" placeholder="Ex.: Fantine, barricada, Waterloo">
+          </div>
+          <div class="control-group chapter-nav-group">
+            <div class="chapter-nav" aria-label="Navegação entre capítulos">
+              <button type="button" id="chapter-prev">Anterior</button>
+              <span id="chapter-position" class="chapter-position"></span>
+              <button type="button" id="chapter-next">Próximo</button>
+            </div>
+          </div>
+        </div>
+        <div id="chapter-summary" class="chapter-summary timeline-summary"></div>
+        <div class="chapter-timeline-shell">
+          <div id="chapter-timeline" class="chapter-timeline" aria-label="Linha do tempo de capítulos"></div>
+        </div>
+        <div id="chapter-explorer" class="chapter-explorer chapter-detail"></div>
+      </section>
+
+      <section class="section chat-section" id="chat">
+        <div class="section-head">
+          <p class="section-label">Chat</p>
+          <h2>Converse com Jean Valjean (mas ele só vai saber responder por aquilo que ele viu ou soube no livro)</h2>
+          <p>
+            Este chat usa apenas Gemini com chave do usuário. A pergunta é enviada junto dos trechos recuperados desta
+            edição do livro, e a resposta deve ficar na voz de Jean Valjean, limitada ao que ele viu, soube ou pode
+            apenas supor com cautela.
+          </p>
+        </div>
+        <div class="chat-shell">
+          <aside class="chat-identity">
+            <img src="assets/os_miseraveis_imagens/jean_valjean.png" alt="Retrato de Jean Valjean" class="chat-avatar">
+            <h3>Jean Valjean</h3>
+          </aside>
+          <div class="chat-panel">
+            <div class="chat-config">
+              <div class="chat-config-grid">
+                <div class="control-group" id="chat-key-group">
+                  <label for="gemini-api-key">Gemini API key</label>
+                  <input id="gemini-api-key" type="password" autocomplete="off" placeholder="Cole sua chave do Google AI Studio">
+                </div>
+              </div>
+              <div class="chat-config-actions">
+                <button type="button" id="chat-save-key" class="chat-secondary-button">Salvar chave</button>
+                <button type="button" id="chat-clear-key" class="chat-tertiary-button">Limpar chave</button>
+              </div>
+              <p class="chat-config-note" id="chat-config-note">A chave fica só neste navegador. O envio inclui sua pergunta e um recorte interno do livro para orientar a resposta.</p>
+              <div class="chat-help">
+                <h3>Como pegar sua chave</h3>
+                <ol>
+                  <li>Abra <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noreferrer">Google AI Studio API keys</a>.</li>
+                  <li>Entre com sua conta Google.</li>
+                  <li>Se for seu primeiro uso, escolha ou crie um projeto.</li>
+                  <li>Clique para criar a chave, copie e cole aqui.</li>
+                </ol>
+                <p><strong>Quem pode usar?</strong> Quem já consegue entrar no Google AI Studio com a própria conta Google.</p>
+                <p><strong>Quem tem acesso?</strong> A chave fica ligada ao projeto da sua conta. Neste site ela fica salva só neste navegador. Fora disso, quem tiver a chave consegue usar a API daquele projeto, então o ideal é mantê-la só com você.</p>
+                <p><strong>Precisa configurar muita coisa?</strong> Em geral, não. Para a maioria das pessoas, basta entrar no AI Studio, gerar a chave e colar aqui.</p>
+              </div>
+              <p class="chat-mode-status" id="chat-mode-status" aria-live="polite"></p>
+            </div>
+            <div id="chat-log" class="chat-log" aria-live="polite"></div>
+            <form id="chat-form" class="chat-form">
+              <label class="sr-only" for="chat-input">Pergunte a Jean Valjean</label>
+              <textarea id="chat-input" rows="3" placeholder="Ex.: O que você sabia sobre Fantine? O que viu em Montfermeil?"></textarea>
+              <div class="chat-actions">
+                <p class="chat-note">O livro serve como base interna. A resposta sai na voz de Jean Valjean, sem exibir citações.</p>
+                <button type="submit" id="chat-submit">Perguntar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer" id="reading-list">
+      <div class="footer-head">
+        <p class="section-label">Para ler melhor a obra</p>
+        <h3>Leituras críticas e acadêmicas</h3>
+        <p>Lista curta de estudos e críticas que ajudam a entender o romance além do enredo principal.</p>
+      </div>
+      <ol class="reading-list">
+        <li><a href="https://repositori.ukwms.ac.id/id/eprint/9047/" target="_blank" rel="noreferrer">A study on law versus mercy in Victor Hugo's novel "Les Miserables"</a><span> — Maria Theresia, Widya Mandala Catholic University Surabaya, 2017. Lê Valjean e Javert como polos de misericórdia e lei.</span></li>
+        <li><a href="https://digitalcommons.law.mercer.edu/jour_mlr/vol75/iss3/6/" target="_blank" rel="noreferrer">Victor Hugo was Right All Along: Les Misérables, the Tragedy of a Punitive Parole System, and a Modern Path Forward</a><span> — Brendan Matthews, Mercer Law Review, 2024. Usa o romance para discutir regimes punitivos de vigilância e liberdade condicional.</span></li>
+        <li><a href="https://ncfs-journal.org/briana-lewis/sewer-and-prostitute-les-miserables-regulation-redemption" target="_blank" rel="noreferrer">The Sewer and the Prostitute in Les Misérables: From Regulation to Redemption</a><span> — Briana Lewis, Nineteenth-Century French Studies. Relaciona Fantine, prostituição, esgotos e exclusão social.</span></li>
+        <li><a href="https://www.ncfs-journal.org/maxime-goergen/fonctions-de-la-lutte-des-classes-dans-les-miserables" target="_blank" rel="noreferrer">Fonctions de la lutte des classes dans Les Misérables</a><span> — Maxime Goergen, Nineteenth-Century French Studies, 2016. Mostra como o conflito de classes estrutura a figura do misérable e a barricada.</span></li>
+        <li><a href="https://vtechworks.lib.vt.edu/items/92aebceb-ea57-45ef-904a-cb4a880f4e08" target="_blank" rel="noreferrer">The Convent: A Place of Refuge in Les Misérables and Histoire de ma vie</a><span> — Teresa Apple Fleming, Virginia Tech, 2020. Lê o convento como espaço de refúgio e renascimento.</span></li>
+        <li><a href="https://kclpure.kcl.ac.uk/portal/en/publications/war-and-the-childs-gaze-in-revolutionary-and-napoleonic-literatur/" target="_blank" rel="noreferrer">War and the child's gaze in revolutionary and Napoleonic literature and culture</a><span> — Emma Butcher, Critical Military Studies, 2021. Propõe novas leituras de <em>Os Miseráveis</em> a partir da infância, guerra e agência infantil.</span></li>
+        <li><a href="https://chr.ewapub.com/article/view/22836" target="_blank" rel="noreferrer">Symbol, History, and Destiny: Narrative Coherence in Victor Hugo's Les Misérables Through Segmented Discourse Representation Theory</a><span> — Hao Zheng, Communications in Humanities Research, 2025. Trata comentário histórico e digressão como parte da estrutura narrativa.</span></li>
+      </ol>
+      <section class="footer-methodology" id="methodology"></section>
+    </footer>
+  </div>
+
+  <aside class="sound-player" id="sound-player" aria-label="Player de trilha sonora">
+    <audio id="soundtrack-audio" preload="auto" playsinline></audio>
+    <div class="sound-player-head">
+      <div>
+        <p class="sound-label">Trilha sonora</p>
+        <strong id="soundtrack-title">Look Down</strong>
+        <span class="sound-shortcut">Atalho: M</span>
+      </div>
+      <div class="sound-head-actions">
+        <button type="button" class="sound-toggle" id="soundtrack-toggle" aria-pressed="true">Pausar</button>
+        <button type="button" class="sound-minimize" id="soundtrack-minimize" aria-expanded="true" aria-controls="soundtrack-body" title="Minimizar player (M)">−</button>
+      </div>
+    </div>
+    <div class="sound-player-body" id="soundtrack-body">
+      <p class="sound-status" id="soundtrack-status" aria-live="polite">Tentando iniciar automaticamente em 20%.</p>
+      <div class="sound-controls">
+        <button type="button" class="sound-next" id="soundtrack-next">Próxima</button>
+        <label class="sound-volume" for="soundtrack-volume">
+          <span>Volume</span>
+          <input id="soundtrack-volume" type="range" min="0" max="100" step="1" value="20">
+        </label>
+      </div>
+      <div class="sound-spotify-actions">
+        <button type="button" class="sound-spotify-toggle" id="soundtrack-spotify-toggle" aria-expanded="false" aria-controls="soundtrack-spotify-panel">Abrir player do Spotify</button>
+        <a class="sound-spotify-link" href="https://open.spotify.com/intl-pt/album/7yoA2zaYc8HADFtqfMYk0y" target="_blank" rel="noreferrer">Ouvir no app</a>
+      </div>
+      <p class="sound-spotify-helper">O botão acima abre o player oficial do álbum. O play fica dentro da janela do Spotify.</p>
+    </div>
+    <div class="sound-spotify-panel" id="soundtrack-spotify-panel" hidden>
+      <div class="sound-spotify-panel-head">
+        <strong>Álbum no Spotify</strong>
+        <button type="button" class="sound-spotify-close" id="soundtrack-spotify-close" aria-label="Fechar Spotify">×</button>
+      </div>
+      <p class="sound-spotify-panel-note">Esse é o player oficial do Spotify. Use o botão de play dentro da caixa abaixo.</p>
+      <iframe
+        src="https://open.spotify.com/embed/album/7yoA2zaYc8HADFtqfMYk0y?utm_source=generator"
+        width="100%"
+        height="352"
+        frameborder="0"
+        allowfullscreen
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        loading="lazy"
+        title="Spotify Embed: Les Misérables"
+      ></iframe>
+    </div>
+  </aside>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>

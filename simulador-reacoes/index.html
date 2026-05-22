@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de reações a reportagens jornalísticas — LFT</title>
+  <meta name="description" content="Simule como diferentes perfis de leitores reagem a uma reportagem jornalística antes de publicá-la.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/png" href="../favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- top bar -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="../index.html" class="topbar-brand">LFT<span class="dot">.</span></a>
+      <span class="topbar-tag">ferramenta experimental</span>
+      <a href="../index.html" class="topbar-back">← portfólio</a>
+    </div>
+  </header>
+
+  <!-- hero -->
+  <div class="hero">
+    <h1>Simulador de reações a <span>reportagens jornalísticas</span></h1>
+    <p>Cole o texto de uma matéria e veja como diferentes perfis de pessoas reagem — antes de publicar. <a href="https://www.linkedin.com/feed/update/urn:li:activity:7439332593113710592/" target="_blank" class="hero-link">Saiba mais sobre o projeto</a></p>
+  </div>
+
+  <!-- layout -->
+  <main class="layout">
+
+    <!-- left: form -->
+    <form id="simForm" class="form-col" autocomplete="off" novalidate>
+
+      <section class="form-section">
+        <h2 class="section-label">Configuração da API</h2>
+
+        <div class="form-group">
+          <label class="form-label" for="providerSelect">Provedor</label>
+          <select id="providerSelect" class="form-select">
+            <option value="openai">OpenAI</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="anthropic">Anthropic (Claude) — requer proxy CORS</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="modelSelect">Modelo</label>
+          <select id="modelSelect" class="form-select"></select>
+          <span class="form-hint" id="modelHint"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="apiKey">Chave de API</label>
+          <div class="key-wrap">
+            <input type="password" id="apiKey" class="form-input"
+              placeholder="" autocomplete="off" spellcheck="false">
+            <button type="button" class="key-toggle" id="keyToggle"
+              title="Mostrar/ocultar" aria-label="Mostrar ou ocultar chave">👁️</button>
+          </div>
+          <span class="form-hint" id="keyHint">Salva só no seu navegador. Nunca enviada a nenhum servidor.</span>
+        </div>
+
+        <div id="corsWarning" class="cors-warning hidden">
+          ⚠️ A API da Anthropic bloqueia chamadas diretas do navegador. Funciona apenas com um proxy CORS. Insira a URL base do proxy no campo abaixo.
+        </div>
+        <div class="form-group hidden" id="proxyGroup">
+          <label class="form-label" for="proxyUrl">URL base do proxy</label>
+          <input type="text" id="proxyUrl" class="form-input" placeholder="https://seu-proxy.com/v1">
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <section class="form-section">
+        <h2 class="section-label">A matéria</h2>
+
+        <div class="form-group">
+          <label class="form-label" for="outletName">Veículo / publicação</label>
+          <input type="text" id="outletName" class="form-input"
+            placeholder="Nome do meio de comunicação">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="articleText">Texto da matéria <span class="required">*</span></label>
+          <textarea id="articleText" class="form-textarea"
+            placeholder="Cole o título e o lead da sua matéria aqui. Pode ser um rascunho ou as informações principais que você planeja publicar."
+            required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="contextText">Contexto adicional <span class="optional">(opcional)</span></label>
+          <textarea id="contextText" class="form-textarea short"
+            placeholder="Descreva brevemente os personagens centrais — quem são, qual cargo, qual o vínculo com a história."></textarea>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <section class="form-section personas-section">
+        <h2 class="section-label">Personas simuladas</h2>
+        <div class="persona-chips">
+          <!-- populated dynamically by app.js -->
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <section class="form-section">
+        <h3 class="section-label">🤖 Personas customizadas (opcional)</h3>
+        <p class="form-hint" style="margin-bottom: 15px;">
+          Além dos 20 perfis padrão, você pode descrever outros tipos de leitores específicos para ver como eles reagiram.
+        </p>
+        
+        <div id="custom-personas-container" class="custom-personas-list">
+          <!-- rows added dynamically -->
+        </div>
+
+        <button type="button" class="btn-add-persona" id="addPersonaBtn">
+          <i class="fas fa-plus"></i> Adicionar persona customizada
+        </button>
+      </section>
+
+      <section class="form-section settings-section">
+        <label class="checkbox-container">
+          <input type="checkbox" id="socialMode">
+          <span class="checkmark"></span>
+          <span class="checkbox-label">
+            <strong>Simular debate entre os leitores</strong>
+            <p class="checkbox-help">As personas não reagem apenas à matéria, mas também leem e respondem umas às outras, criando uma simulação mais realista de redes sociais.</p>
+          </span>
+        </label>
+      </section>
+
+      <div class="divider"></div>
+
+      <button type="submit" class="btn-simulate" id="submitBtn">
+        Simular reações
+      </button>
+
+    </form>
+
+    <!-- right: results -->
+    <div class="results-col" id="rightPanel">
+
+      <!-- post preview -->
+      <div class="post-preview hidden" id="postPreview">
+        <div class="post-outlet">
+          <span id="previewOutlet" class="outlet-badge"></span>
+          <span class="post-preview-label">pré-visualização</span>
+        </div>
+        <p class="post-title" id="previewTitle"></p>
+        <p class="post-lead" id="previewBody"></p>
+      </div>
+
+      <!-- dynamic area -->
+      <div id="resultsArea" class="results-area">
+        <div id="results-content">
+          <div class="empty-state">
+            <span class="empty-icon">💡</span>
+            <p class="empty-title">Aguardando texto</p>
+            <p class="empty-desc">Cole sua matéria à esquerda e clique em "Simular reações" para ver as reações de diferentes personas antes da publicação.</p>
+          </div>
+        </div>
+        <div id="analysis-report" class="analysis-report hidden"></div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- disclaimer -->
+  <footer class="disclaimer">
+    <p><strong>Ferramenta experimental.</strong> Os comentários são <em>simulações por inteligência artificial</em> com finalidade jornalística e de pesquisa — não representam opiniões reais de nenhuma pessoa ou organização. <a href="https://www.linkedin.com/feed/update/urn:li:activity:7439332593113710592/" target="_blank">Saiba mais (LinkedIn)</a></p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
