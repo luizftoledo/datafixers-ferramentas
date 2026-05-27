@@ -59,6 +59,11 @@
           <button id="run-button" type="submit">Rodar busca</button>
           <button id="stop-button" type="button" disabled>Parar</button>
         </div>
+        <p class="coverage-note">
+          <strong>Cobertura dos acervos:</strong> A <strong>Folha</strong> indexa ate a edicao mais recente (a busca cobre o dia anterior).
+          O <strong>Estadao</strong> tem alguns meses de atraso na digitalizacao — atualmente o acervo cobre confiavelmente ate
+          <strong id="estadao-cutoff">~fevereiro de 2026</strong>. Buscas em datas posteriores podem retornar zero, mesmo que o termo exista.
+        </p>
       </form>
     </section>
 
@@ -66,7 +71,7 @@
       <div class="overall-row">
         <div>
           <strong id="status-title">Pronto</strong>
-          <p id="status-detail">Informe senha, termo e periodo. Para Estadao, usar periodo reduz muito a coleta.</p>
+          <p id="status-detail">Preencha os campos acima e clique em "Rodar busca". Pra Estadao, preencher Inicio e Fim acelera bastante (sem isso, ele varre todos os meses do acervo, ano por ano).</p>
         </div>
         <span id="count">0 linhas</span>
       </div>
@@ -78,11 +83,18 @@
     </section>
 
     <section id="download-panel" class="panel" hidden>
-      <h2 class="panel-title">Baixar imagens em alta resolucao</h2>
-      <p class="panel-sub" id="download-summary">Aguarde a busca terminar.</p>
+      <h2 class="panel-title">Opcional: baixar as paginas digitalizadas (JPG)</h2>
+      <p class="panel-sub">
+        A planilha (CSV) ja foi baixada — ela tem todos os metadados (data, edicao, pagina, links).
+        Use esta secao SOMENTE se voce tambem quer as imagens das paginas em alta resolucao no seu computador.
+        Pra nao travar o navegador, dividimos em <strong>lotes</strong>: voce clica em "Baixar lote 1", recebe um ZIP,
+        clica de novo pra "Baixar lote 2", e assim por diante ate baixar todos.
+        Se algum lote der erro, basta clicar de novo no mesmo botao — ele tenta de novo.
+      </p>
+      <p class="panel-sub" id="download-summary"><strong>Aguarde a busca terminar.</strong></p>
       <div class="grid grid-3">
         <label>
-          Fonte
+          Fonte (selecione qual jornal)
           <select id="download-source"></select>
         </label>
         <label>
@@ -90,15 +102,19 @@
           <input id="batch-size" type="number" min="20" max="500" step="10" value="200">
         </label>
         <label>
-          Pausa entre downloads, ms
+          Pausa entre imagens, ms
           <input id="download-delay" type="number" min="200" max="3000" step="50" value="400">
         </label>
       </div>
       <div class="actions">
-        <button id="download-button" type="button">Baixar proximo lote</button>
-        <button id="download-reset" type="button" class="secondary">Reiniciar contagem</button>
+        <button id="download-button" type="button">Baixar lote</button>
+        <button id="download-retry" type="button" class="secondary" hidden>Refazer ultimo lote</button>
+        <button id="download-reset" type="button" class="secondary">Recomecar do lote 1</button>
       </div>
-      <p id="download-hint" class="panel-sub">Cada lote vira um arquivo ZIP. Mantenha a aba aberta enquanto baixa.</p>
+      <p id="download-hint" class="panel-sub">
+        Cada arquivo dentro do ZIP tem o nome da pagina (ex: <code>19670430-28233-nac-0019-999-19-not.jpg</code>).
+        Mantenha a aba aberta enquanto baixa. Cada imagem tem cerca de 1 MB.
+      </p>
     </section>
 
     <section class="panel">

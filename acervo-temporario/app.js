@@ -11,6 +11,7 @@ const overallFill = document.querySelector('#overall-fill');
 const overallPercent = document.querySelector('#overall-percent');
 const downloadPanel = document.querySelector('#download-panel');
 const downloadButton = document.querySelector('#download-button');
+const downloadRetry = document.querySelector('#download-retry');
 const downloadReset = document.querySelector('#download-reset');
 const downloadSourceSel = document.querySelector('#download-source');
 const downloadSummary = document.querySelector('#download-summary');
@@ -303,7 +304,7 @@ function monthChunks(startISO, endISO) {
 
 async function scrapeFolha(options, rows, seen) {
   log('Folha: lendo pagina 1');
-  updateTask('folha-search', { status: 'running', detail: 'lendo pagina 1' });
+  updateTask('folha', { status: 'running', detail: 'Buscando resultados...' });
   const firstHtml = await proxyFetch({
     source: 'folha',
     q: options.keyword,
@@ -315,7 +316,11 @@ async function scrapeFolha(options, rows, seen) {
   const total = parseFolhaTotal(first.doc);
   const totalPages = Math.min(Math.ceil(total / 20) || 1, options.maxPages);
   log(`Folha: ${total} resultados, ${totalPages} paginas planejadas`);
-  updateTask('folha-search', { total: totalPages, done: 1, detail: `${total} resultados em ${totalPages} pagina(s)` });
+  if (total === 0) {
+    updateTask('folha', { status: 'done', total: 1, done: 1, detail: 'Nenhum resultado nesse periodo' });
+    return;
+  }
+  updateTask('folha', { total: totalPages, done: 1, detail: `${total} resultados — pagina 1/${totalPages}` });
   addRows(first.rows, rows, seen, 'folha');
 
   for (let page = 2; page <= totalPages; page += 1) {
@@ -329,24 +334,27 @@ async function scrapeFolha(options, rows, seen) {
       endDate: toBRDate(options.endDate)
     }, options.password);
     addRows(parseFolhaItems(html, page).rows, rows, seen, 'folha');
-    updateTask('folha-search', { done: page, detail: `pagina ${page} de ${totalPages}` });
+    updateTask('folha', { done: page, detail: `${total} resultados — pagina ${page}/${totalPages}` });
   }
   if (!stopped) {
-    updateTask('folha-search', { status: 'done', done: totalPages || 1, total: totalPages || 1, detail: `${total} resultados coletados` });
+    const collected = rows.filter(r => r.source === 'folha').length;
+    updateTask('folha', { status: 'done', done: totalPages || 1, total: totalPages || 1, detail: `${collected} ocorrencias coletadas` });
   }
 }
 
 async function scrapeEstadao(options, rows, seen) {
   const chunks = monthChunks(options.startDate, options.endDate);
   log(`Estadao: ${chunks.length} bloco(s) de periodo`);
-  updateTask('estadao-search', { status: 'running', total: chunks.length, done: 0, detail: `${chunks.length} bloco(s) mensais a varrer` });
+  updateTask('estadao', { status: 'running', total: chunks.length, done: 0, detail: `Etapa 1/2 — varrendo ${chunks.length} mes(es)` });
   let chunkIndex = 0;
+  let totalOccurrences = 0;
+  let monthsWithData = 0;
   for (const chunk of chunks) {
     if (stopped) break;
     chunkIndex += 1;
     const label = chunk.year ? `${chunk.month}/${chunk.year}` : 'periodo completo';
     log(`Estadao: lendo ${label}`);
-    updateTask('estadao-search', { done: chunkIndex - 1, detail: `bloco ${chunkIndex}/${chunks.length} (${label}) — lendo pagina 1` });
+    updateTask('estadao', { done: chunkIndex - 1, detail: `Etapa 1/2 — buscando em ${label} (${chunkIndex}/${chunks.length})` });
     const firstHtml = await proxyFetch({
       source: 'estadao',
       q: options.keyword,
@@ -355,6 +363,10 @@ async function scrapeEstadao(options, rows, seen) {
     }, options.password);
     const first = parseEstadaoItems(firstHtml, 1, options.startDate, options.endDate);
     const total = parseEstadaoTotal(first.doc);
+    if (total > 0) {
+      monthsWithData += 1;
+      totalOccurrences += total;
+    }
     const totalPages = Math.min(Math.ceil(total / 10) || 1, options.maxPages);
     log(`Estadao ${label}: ${total} ocorrencias, ${totalPages} paginas planejadas`);
     addRows(first.rows, rows, seen, 'estadao');
@@ -369,29 +381,41 @@ async function scrapeEstadao(options, rows, seen) {
         ...chunk
       }, options.password);
       addRows(parseEstadaoItems(html, page, options.startDate, options.endDate).rows, rows, seen, 'estadao');
-      updateTask('estadao-search', { detail: `bloco ${chunkIndex}/${chunks.length} (${label}) — pagina ${page}/${totalPages}` });
+      updateTask('estadao', { detail: `Etapa 1/2 — ${label}, pagina ${page}/${totalPages} (mes ${chunkIndex}/${chunks.length})` });
     }
-    updateTask('estadao-search', { done: chunkIndex });
+    updateTask('estadao', { done: chunkIndex });
   }
-  if (!stopped) {
-    updateTask('estadao-search', { status: 'done', detail: `${chunks.length} bloco(s) varridos` });
+  if (stopped) return;
+
+  const estadaoRows = rows.filter(r => r.source === 'estadao');
+  if (estadaoRows.length === 0) {
+    let detail = `Nenhum resultado nesse periodo (varreu ${chunks.length} mes(es))`;
+    // Aviso especifico se o periodo eh muito recente (acervo do Estadao tem ~3 meses de atraso)
+    const today = new Date();
+    const cutoff = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+    const startDate = options.startDate ? new Date(`${options.startDate}T00:00:00`) : null;
+    if (startDate && startDate >= cutoff) {
+      detail = `Nenhum resultado. O acervo do Estadao tem alguns meses de atraso na digitalizacao — tente um periodo que termine antes de ${cutoff.toLocaleDateString('pt-BR')}.`;
+    }
+    updateTask('estadao', { status: 'done', detail });
+    return;
   }
-  if (!stopped && options.highRes) {
-    await enrichEstadaoHighRes(rows, options);
-  } else if (tasks.has('estadao-hires')) {
-    updateTask('estadao-hires', { status: 'skipped', detail: 'desativado' });
+  if (!options.highRes) {
+    updateTask('estadao', { status: 'done', detail: `${estadaoRows.length} ocorrencias coletadas (sem imagens em alta resolucao)` });
+    return;
   }
+  await enrichEstadaoHighRes(rows, options, chunks.length, estadaoRows.length);
 }
 
-async function enrichEstadaoHighRes(rows, options) {
+async function enrichEstadaoHighRes(rows, options, chunksCount, estadaoCount) {
   const targets = rows.filter(r => r.source === 'estadao' && r.file_id);
   const uniqueFiles = [...new Set(targets.map(r => r.file_id))];
-  updateTask('estadao-hires', { status: 'running', total: uniqueFiles.length, done: 0, detail: `${uniqueFiles.length} arquivos unicos` });
   if (!uniqueFiles.length) {
-    updateTask('estadao-hires', { status: 'done', detail: 'nenhum arquivo do Estadao' });
+    updateTask('estadao', { status: 'done', detail: `${estadaoCount} ocorrencias coletadas (sem arquivos com ID — pulei alta resolucao)` });
     return;
   }
   log(`Estadao: buscando imagem grande para ${uniqueFiles.length} arquivos unicos`);
+  updateTask('estadao', { status: 'running', total: uniqueFiles.length, done: 0, detail: `Etapa 2/2 — descobrindo URLs em alta para ${uniqueFiles.length} paginas` });
   const byFile = new Map();
   let idx = 0;
   for (const fileId of uniqueFiles) {
@@ -413,7 +437,7 @@ async function enrichEstadaoHighRes(rows, options) {
         page_image_high_res_height: ''
       });
     }
-    updateTask('estadao-hires', { done: idx, detail: `${idx} de ${uniqueFiles.length} imagens descobertas` });
+    updateTask('estadao', { done: idx, detail: `Etapa 2/2 — ${idx}/${uniqueFiles.length} URLs em alta resolucao descobertas` });
     if (idx < uniqueFiles.length) await sleep(options.delay);
   }
   for (const row of rows) {
@@ -422,7 +446,7 @@ async function enrichEstadaoHighRes(rows, options) {
     if (meta) Object.assign(row, meta);
   }
   if (!stopped) {
-    updateTask('estadao-hires', { status: 'done', detail: `${uniqueFiles.length} arquivos enriquecidos` });
+    updateTask('estadao', { status: 'done', detail: `${estadaoCount} ocorrencias coletadas em ${uniqueFiles.length} paginas unicas` });
   }
 }
 
@@ -609,13 +633,10 @@ form.addEventListener('submit', async (event) => {
   lastRunKeyword = options.keyword;
 
   if (options.source === 'folha' || options.source === 'both') {
-    addTask({ id: 'folha-search', label: 'Folha — buscas paginadas', weight: 10 });
+    addTask({ id: 'folha', label: 'Folha de S.Paulo', weight: 10 });
   }
   if (options.source === 'estadao' || options.source === 'both') {
-    addTask({ id: 'estadao-search', label: 'Estadao — buscas mensais paginadas', weight: 20 });
-    if (options.highRes) {
-      addTask({ id: 'estadao-hires', label: 'Estadao — URLs em alta resolucao', weight: 30 });
-    }
+    addTask({ id: 'estadao', label: 'O Estado de S.Paulo', weight: options.highRes ? 40 : 15 });
   }
 
   try {

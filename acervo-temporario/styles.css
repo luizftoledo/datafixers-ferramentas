@@ -126,6 +126,21 @@ select {
   flex-wrap: wrap;
 }
 
+.coverage-note {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--warning);
+  background: #fff8ec;
+  border-radius: 0 6px 6px 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.coverage-note strong {
+  color: var(--ink);
+}
+
 button {
   padding: 0 16px;
   background: var(--accent);
