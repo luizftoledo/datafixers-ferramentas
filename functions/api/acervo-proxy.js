@@ -28,15 +28,26 @@ export async function onRequest(context) {
   const query = (url.searchParams.get('q') || '').trim();
   const page = clampInt(url.searchParams.get('page'), 1, 3000);
 
-  if (!query || query.length < 3 || query.length > 80) {
-    return new Response('invalid query', { status: 400, headers: corsHeaders });
-  }
-
   let target;
+  let upstreamContentType = 'text/html; charset=utf-8';
   if (source === 'folha') {
+    if (!query || query.length < 3 || query.length > 80) {
+      return new Response('invalid query', { status: 400, headers: corsHeaders });
+    }
     target = buildFolhaUrl(query, page, url);
   } else if (source === 'estadao') {
+    if (!query || query.length < 3 || query.length > 80) {
+      return new Response('invalid query', { status: 400, headers: corsHeaders });
+    }
     target = buildEstadaoUrl(query, page, url);
+  } else if (source === 'estadao_meta') {
+    const fileId = (url.searchParams.get('file') || '').trim();
+    if (!/^[A-Za-z0-9_-]{8,80}$/.test(fileId)) {
+      return new Response('invalid file', { status: 400, headers: corsHeaders });
+    }
+    target = new URL('https://acervo.estadao.com.br/servicos/montaPagina.php');
+    target.searchParams.set('nome_arquivo', fileId);
+    upstreamContentType = 'application/json; charset=utf-8';
   } else {
     return new Response('invalid source', { status: 400, headers: corsHeaders });
   }
@@ -48,12 +59,20 @@ export async function onRequest(context) {
     },
     cf: { cacheTtl: 0, cacheEverything: false }
   });
-  const body = await upstream.text();
+  const upstreamCT = upstream.headers.get('content-type') || '';
+  const upstreamCharset = (upstreamCT.match(/charset=([^;]+)/i) || [])[1]?.toLowerCase().trim();
+  let body;
+  if (upstreamCharset && upstreamCharset !== 'utf-8' && upstreamCharset !== 'utf8') {
+    const buf = await upstream.arrayBuffer();
+    body = new TextDecoder(upstreamCharset, { fatal: false }).decode(buf);
+  } else {
+    body = await upstream.text();
+  }
   return new Response(body, {
     status: upstream.status,
     headers: {
       ...corsHeaders,
-      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Type': upstreamContentType,
       'X-Upstream-Status': String(upstream.status)
     }
   });

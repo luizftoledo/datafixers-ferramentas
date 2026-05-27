@@ -241,6 +241,47 @@ async function scrapeEstadao(options, rows, seen) {
       updateProgress(page, totalPages, `Estadao ${label} pagina ${page}/${totalPages} - bloco ${chunkIndex}/${chunks.length}`);
     }
   }
+  if (!stopped && options.highRes) {
+    await enrichEstadaoHighRes(rows, options);
+  }
+}
+
+async function enrichEstadaoHighRes(rows, options) {
+  const targets = rows.filter(r => r.source === 'estadao' && r.file_id);
+  const uniqueFiles = [...new Set(targets.map(r => r.file_id))];
+  if (!uniqueFiles.length) return;
+  log(`Estadao: buscando imagem grande para ${uniqueFiles.length} arquivos unicos`);
+  const byFile = new Map();
+  let idx = 0;
+  for (const fileId of uniqueFiles) {
+    if (stopped) break;
+    idx += 1;
+    try {
+      const body = await proxyFetch({ source: 'estadao_meta', file: fileId }, options.password);
+      const json = JSON.parse(body.replace(/^﻿/, ''));
+      byFile.set(fileId, {
+        page_image_url_high_res: json.imagem_reader || '',
+        page_image_high_res_width: json.imagem_reader_width || '',
+        page_image_high_res_height: json.imagem_reader_height || ''
+      });
+    } catch (error) {
+      log(`Estadao meta erro em ${fileId}: ${error.message}`);
+      byFile.set(fileId, {
+        page_image_url_high_res: '',
+        page_image_high_res_width: '',
+        page_image_high_res_height: ''
+      });
+    }
+    if (idx % 25 === 0 || idx === uniqueFiles.length) {
+      updateProgress(idx, uniqueFiles.length, `Imagens em alta resolucao ${idx}/${uniqueFiles.length}`);
+    }
+    if (idx < uniqueFiles.length) await sleep(options.delay);
+  }
+  for (const row of rows) {
+    if (row.source !== 'estadao') continue;
+    const meta = byFile.get(row.file_id);
+    if (meta) Object.assign(row, meta);
+  }
 }
 
 function addRows(newRows, rows, seen, source) {
@@ -266,19 +307,28 @@ function csvEscape(value) {
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-function downloadCsv(rows, keyword) {
-  const fields = [...new Set(rows.flatMap(row => Object.keys(row)))];
+function downloadCsvFor(sourceLabel, sourceRows, keyword) {
+  if (!sourceRows.length) return;
+  const fields = [...new Set(sourceRows.flatMap(row => Object.keys(row)))];
   const csv = [
     fields.join(','),
-    ...rows.map(row => fields.map(field => csvEscape(row[field])).join(','))
+    ...sourceRows.map(row => fields.map(field => csvEscape(row[field])).join(','))
   ].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const link = document.createElement('a');
   const safeTerm = keyword.toLowerCase().replace(/[^a-z0-9_-]+/gi, '-').replace(/^-|-$/g, '') || 'busca';
   link.href = URL.createObjectURL(blob);
-  link.download = `acervo-${safeTerm}-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.download = `acervo-${sourceLabel}-${safeTerm}-${new Date().toISOString().slice(0, 10)}.csv`;
   link.click();
   URL.revokeObjectURL(link.href);
+}
+
+function downloadCsvs(rows, keyword) {
+  const folhaRows = rows.filter(r => r.source === 'folha');
+  const estadaoRows = rows.filter(r => r.source === 'estadao');
+  downloadCsvFor('folha', folhaRows, keyword);
+  downloadCsvFor('estadao', estadaoRows, keyword);
+  return { folha: folhaRows.length, estadao: estadaoRows.length };
 }
 
 form.addEventListener('submit', async (event) => {
@@ -297,7 +347,8 @@ form.addEventListener('submit', async (event) => {
     startDate: document.querySelector('#start-date').value,
     endDate: document.querySelector('#end-date').value,
     delay: Number(document.querySelector('#delay').value || 650),
-    maxPages: Number(document.querySelector('#max-pages').value || 3000)
+    maxPages: Number(document.querySelector('#max-pages').value || 3000),
+    highRes: document.querySelector('#high-res').checked
   };
   sessionStorage.setItem('acervo-tool-key', options.password);
   runButton.disabled = true;
@@ -314,9 +365,13 @@ form.addEventListener('submit', async (event) => {
       await scrapeEstadao(options, rows, seen);
     }
     if (rows.length) {
-      downloadCsv(rows, options.keyword);
-      setStatus(stopped ? 'Parado' : 'Concluido', `CSV gerado com ${rows.length} linhas.`);
-      log(`CSV gerado com ${rows.length} linhas`);
+      const counts = downloadCsvs(rows, options.keyword);
+      const detail = [
+        counts.folha ? `folha: ${counts.folha}` : null,
+        counts.estadao ? `estadao: ${counts.estadao}` : null
+      ].filter(Boolean).join(' · ');
+      setStatus(stopped ? 'Parado' : 'Concluido', `CSV(s) gerado(s) — ${detail}.`);
+      log(`CSV(s) gerado(s): ${detail}`);
     } else {
       setStatus('Sem resultados', 'Nenhuma linha foi coletada.');
     }
