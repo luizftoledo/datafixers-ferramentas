@@ -12,7 +12,7 @@
     <header>
       <p class="eyebrow">Data Fixers · ferramenta temporaria</p>
       <h1>Busca em acervos</h1>
-      <p class="lede">Coleta metadados publicos de resultados da Folha e do Estadao e baixa um CSV no seu navegador.</p>
+      <p class="lede">Coleta metadados publicos de resultados da Folha e do Estadao, baixa um CSV por fonte e (opcional) empacota as imagens em lotes ZIP.</p>
     </header>
 
     <section class="panel">
@@ -63,18 +63,51 @@
     </section>
 
     <section class="panel">
-      <div class="progress-row">
+      <div class="overall-row">
         <div>
           <strong id="status-title">Pronto</strong>
           <p id="status-detail">Informe senha, termo e periodo. Para Estadao, usar periodo reduz muito a coleta.</p>
         </div>
         <span id="count">0 linhas</span>
       </div>
-      <progress id="progress" value="0" max="1"></progress>
+      <div class="overall-progress">
+        <div class="overall-bar"><div id="overall-fill"></div></div>
+        <span id="overall-percent">0%</span>
+      </div>
+      <ol id="task-list" class="task-list"></ol>
+    </section>
+
+    <section id="download-panel" class="panel" hidden>
+      <h2 class="panel-title">Baixar imagens em alta resolucao</h2>
+      <p class="panel-sub" id="download-summary">Aguarde a busca terminar.</p>
+      <div class="grid grid-3">
+        <label>
+          Fonte
+          <select id="download-source"></select>
+        </label>
+        <label>
+          Imagens por lote
+          <input id="batch-size" type="number" min="20" max="500" step="10" value="200">
+        </label>
+        <label>
+          Pausa entre downloads, ms
+          <input id="download-delay" type="number" min="200" max="3000" step="50" value="400">
+        </label>
+      </div>
+      <div class="actions">
+        <button id="download-button" type="button">Baixar proximo lote</button>
+        <button id="download-reset" type="button" class="secondary">Reiniciar contagem</button>
+      </div>
+      <p id="download-hint" class="panel-sub">Cada lote vira um arquivo ZIP. Mantenha a aba aberta enquanto baixa.</p>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel-title">Log</h2>
       <pre id="log" aria-live="polite"></pre>
     </section>
   </main>
 
+  <script src="./jszip.min.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

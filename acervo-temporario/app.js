@@ -1,14 +1,30 @@
+// Elementos
 const form = document.querySelector('#search-form');
 const runButton = document.querySelector('#run-button');
 const stopButton = document.querySelector('#stop-button');
 const statusTitle = document.querySelector('#status-title');
 const statusDetail = document.querySelector('#status-detail');
-const progress = document.querySelector('#progress');
 const countEl = document.querySelector('#count');
 const logEl = document.querySelector('#log');
+const taskListEl = document.querySelector('#task-list');
+const overallFill = document.querySelector('#overall-fill');
+const overallPercent = document.querySelector('#overall-percent');
+const downloadPanel = document.querySelector('#download-panel');
+const downloadButton = document.querySelector('#download-button');
+const downloadReset = document.querySelector('#download-reset');
+const downloadSourceSel = document.querySelector('#download-source');
+const downloadSummary = document.querySelector('#download-summary');
+const downloadHint = document.querySelector('#download-hint');
+const batchSizeInput = document.querySelector('#batch-size');
+const downloadDelayInput = document.querySelector('#download-delay');
 
 const EXPIRES_AT = new Date('2026-05-28T21:27:28Z');
 let stopped = false;
+let lastRunRows = [];
+let lastRunKeyword = '';
+const batchCursor = { folha: 0, estadao: 0 };
+
+// === Helpers básicos ===
 
 function log(line) {
   const time = new Date().toLocaleTimeString('pt-BR');
@@ -57,6 +73,94 @@ function absoluteUrl(href, base) {
   }
 }
 
+function safeName(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '');
+}
+
+// === Sistema de tasks ===
+//
+// Cada task: { id, label, weight, total, done, status, detail }
+// status: pending | running | done | error | skipped
+// A barra geral é uma média ponderada por weight de (done / total).
+
+const tasks = new Map();
+const taskOrder = [];
+
+function resetTasks() {
+  tasks.clear();
+  taskOrder.length = 0;
+  taskListEl.innerHTML = '';
+  overallFill.style.width = '0%';
+  overallPercent.textContent = '0%';
+}
+
+function addTask(task) {
+  const full = {
+    total: 0, done: 0, status: 'pending', detail: '', weight: 10, ...task
+  };
+  tasks.set(full.id, full);
+  taskOrder.push(full.id);
+  renderTask(full);
+  return full;
+}
+
+function renderTask(task) {
+  let el = document.querySelector(`[data-task-id="${task.id}"]`);
+  if (!el) {
+    el = document.createElement('li');
+    el.className = 'task-item';
+    el.dataset.taskId = task.id;
+    el.innerHTML = `
+      <span class="task-icon"></span>
+      <span class="task-label"></span>
+      <span class="task-count"></span>
+      <span class="task-detail"></span>
+      <span class="task-bar"><span class="task-bar-fill"></span></span>
+    `;
+    taskListEl.appendChild(el);
+  }
+  el.dataset.status = task.status;
+  const iconEl = el.querySelector('.task-icon');
+  iconEl.textContent = ({
+    pending: '·',
+    running: '↻',
+    done: '✓',
+    error: '!',
+    skipped: '–'
+  })[task.status] || '·';
+  el.querySelector('.task-label').textContent = task.label;
+  el.querySelector('.task-detail').textContent = task.detail;
+  const count = task.total ? `${task.done}/${task.total}` : (task.status === 'done' ? 'feito' : '');
+  el.querySelector('.task-count').textContent = count;
+  const pct = task.total ? Math.min(100, (task.done / task.total) * 100) : (task.status === 'done' ? 100 : 0);
+  el.querySelector('.task-bar-fill').style.width = `${pct}%`;
+}
+
+function updateTask(id, patch) {
+  const task = tasks.get(id);
+  if (!task) return;
+  Object.assign(task, patch);
+  renderTask(task);
+  updateOverall();
+}
+
+function updateOverall() {
+  let weighted = 0;
+  let totalWeight = 0;
+  for (const id of taskOrder) {
+    const t = tasks.get(id);
+    if (t.status === 'skipped') continue;
+    totalWeight += t.weight;
+    const local = t.total ? Math.min(1, t.done / t.total) : (t.status === 'done' ? 1 : 0);
+    weighted += local * t.weight;
+  }
+  const pct = totalWeight ? Math.round((weighted / totalWeight) * 100) : 0;
+  overallFill.style.width = `${pct}%`;
+  overallPercent.textContent = `${pct}%`;
+}
+
+// === HTTP via proxy ===
+
 async function proxyFetch(params, password) {
   const url = new URL('/api/acervo-proxy', window.location.origin);
   Object.entries(params).forEach(([key, value]) => {
@@ -72,6 +176,24 @@ async function proxyFetch(params, password) {
   }
   return response.text();
 }
+
+async function proxyFetchBlob(params, password) {
+  const url = new URL('/api/acervo-proxy', window.location.origin);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, value);
+  });
+  const response = await fetch(url.toString(), {
+    headers: { 'X-Tool-Key': password },
+    cache: 'no-store'
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`${response.status} ${text || response.statusText}`);
+  }
+  return response.blob();
+}
+
+// === Parsers ===
 
 function parseFolhaTotal(doc) {
   const text = doc.querySelector('.results-tool-bar span')?.textContent || '';
@@ -177,8 +299,11 @@ function monthChunks(startISO, endISO) {
   return chunks;
 }
 
+// === Scrapers ===
+
 async function scrapeFolha(options, rows, seen) {
   log('Folha: lendo pagina 1');
+  updateTask('folha-search', { status: 'running', detail: 'lendo pagina 1' });
   const firstHtml = await proxyFetch({
     source: 'folha',
     q: options.keyword,
@@ -190,6 +315,7 @@ async function scrapeFolha(options, rows, seen) {
   const total = parseFolhaTotal(first.doc);
   const totalPages = Math.min(Math.ceil(total / 20) || 1, options.maxPages);
   log(`Folha: ${total} resultados, ${totalPages} paginas planejadas`);
+  updateTask('folha-search', { total: totalPages, done: 1, detail: `${total} resultados em ${totalPages} pagina(s)` });
   addRows(first.rows, rows, seen, 'folha');
 
   for (let page = 2; page <= totalPages; page += 1) {
@@ -203,19 +329,24 @@ async function scrapeFolha(options, rows, seen) {
       endDate: toBRDate(options.endDate)
     }, options.password);
     addRows(parseFolhaItems(html, page).rows, rows, seen, 'folha');
-    updateProgress(page, totalPages, `Folha pagina ${page}/${totalPages}`);
+    updateTask('folha-search', { done: page, detail: `pagina ${page} de ${totalPages}` });
+  }
+  if (!stopped) {
+    updateTask('folha-search', { status: 'done', done: totalPages || 1, total: totalPages || 1, detail: `${total} resultados coletados` });
   }
 }
 
 async function scrapeEstadao(options, rows, seen) {
   const chunks = monthChunks(options.startDate, options.endDate);
   log(`Estadao: ${chunks.length} bloco(s) de periodo`);
+  updateTask('estadao-search', { status: 'running', total: chunks.length, done: 0, detail: `${chunks.length} bloco(s) mensais a varrer` });
   let chunkIndex = 0;
   for (const chunk of chunks) {
     if (stopped) break;
     chunkIndex += 1;
     const label = chunk.year ? `${chunk.month}/${chunk.year}` : 'periodo completo';
     log(`Estadao: lendo ${label}`);
+    updateTask('estadao-search', { done: chunkIndex - 1, detail: `bloco ${chunkIndex}/${chunks.length} (${label}) — lendo pagina 1` });
     const firstHtml = await proxyFetch({
       source: 'estadao',
       q: options.keyword,
@@ -238,18 +369,28 @@ async function scrapeEstadao(options, rows, seen) {
         ...chunk
       }, options.password);
       addRows(parseEstadaoItems(html, page, options.startDate, options.endDate).rows, rows, seen, 'estadao');
-      updateProgress(page, totalPages, `Estadao ${label} pagina ${page}/${totalPages} - bloco ${chunkIndex}/${chunks.length}`);
+      updateTask('estadao-search', { detail: `bloco ${chunkIndex}/${chunks.length} (${label}) — pagina ${page}/${totalPages}` });
     }
+    updateTask('estadao-search', { done: chunkIndex });
+  }
+  if (!stopped) {
+    updateTask('estadao-search', { status: 'done', detail: `${chunks.length} bloco(s) varridos` });
   }
   if (!stopped && options.highRes) {
     await enrichEstadaoHighRes(rows, options);
+  } else if (tasks.has('estadao-hires')) {
+    updateTask('estadao-hires', { status: 'skipped', detail: 'desativado' });
   }
 }
 
 async function enrichEstadaoHighRes(rows, options) {
   const targets = rows.filter(r => r.source === 'estadao' && r.file_id);
   const uniqueFiles = [...new Set(targets.map(r => r.file_id))];
-  if (!uniqueFiles.length) return;
+  updateTask('estadao-hires', { status: 'running', total: uniqueFiles.length, done: 0, detail: `${uniqueFiles.length} arquivos unicos` });
+  if (!uniqueFiles.length) {
+    updateTask('estadao-hires', { status: 'done', detail: 'nenhum arquivo do Estadao' });
+    return;
+  }
   log(`Estadao: buscando imagem grande para ${uniqueFiles.length} arquivos unicos`);
   const byFile = new Map();
   let idx = 0;
@@ -272,9 +413,7 @@ async function enrichEstadaoHighRes(rows, options) {
         page_image_high_res_height: ''
       });
     }
-    if (idx % 25 === 0 || idx === uniqueFiles.length) {
-      updateProgress(idx, uniqueFiles.length, `Imagens em alta resolucao ${idx}/${uniqueFiles.length}`);
-    }
+    updateTask('estadao-hires', { done: idx, detail: `${idx} de ${uniqueFiles.length} imagens descobertas` });
     if (idx < uniqueFiles.length) await sleep(options.delay);
   }
   for (const row of rows) {
@@ -282,54 +421,161 @@ async function enrichEstadaoHighRes(rows, options) {
     const meta = byFile.get(row.file_id);
     if (meta) Object.assign(row, meta);
   }
+  if (!stopped) {
+    updateTask('estadao-hires', { status: 'done', detail: `${uniqueFiles.length} arquivos enriquecidos` });
+  }
 }
 
-function addRows(newRows, rows, seen, source) {
+function addRows(newRows, rowsArr, seen, source) {
   for (const row of newRows) {
     const key = source === 'folha'
       ? `folha:${row.anchor || row.href}`
       : `estadao:${row.file_id}:${row.coordinates}:${row.highlight_thumb_url}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    rows.push({ result_index: rows.length + 1, ...row });
+    rowsArr.push({ result_index: rowsArr.length + 1, ...row });
   }
-  countEl.textContent = `${rows.length} linhas`;
+  countEl.textContent = `${rowsArr.length} linhas`;
 }
 
-function updateProgress(value, max, detail) {
-  progress.max = max || 1;
-  progress.value = value || 0;
-  setStatus('Rodando', detail);
-}
+// === CSVs ===
 
 function csvEscape(value) {
   const text = String(value ?? '');
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-function downloadCsvFor(sourceLabel, sourceRows, keyword) {
-  if (!sourceRows.length) return;
-  const fields = [...new Set(sourceRows.flatMap(row => Object.keys(row)))];
-  const csv = [
+function buildCsv(rowsArr) {
+  const fields = [...new Set(rowsArr.flatMap(row => Object.keys(row)))];
+  return [
     fields.join(','),
-    ...sourceRows.map(row => fields.map(field => csvEscape(row[field])).join(','))
+    ...rowsArr.map(row => fields.map(field => csvEscape(row[field])).join(','))
   ].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const link = document.createElement('a');
-  const safeTerm = keyword.toLowerCase().replace(/[^a-z0-9_-]+/gi, '-').replace(/^-|-$/g, '') || 'busca';
-  link.href = URL.createObjectURL(blob);
-  link.download = `acervo-${sourceLabel}-${safeTerm}-${new Date().toISOString().slice(0, 10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
 }
 
-function downloadCsvs(rows, keyword) {
-  const folhaRows = rows.filter(r => r.source === 'folha');
-  const estadaoRows = rows.filter(r => r.source === 'estadao');
-  downloadCsvFor('folha', folhaRows, keyword);
-  downloadCsvFor('estadao', estadaoRows, keyword);
+function downloadBlob(blob, filename) {
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+}
+
+function downloadCsvs(rowsArr, keyword) {
+  const folhaRows = rowsArr.filter(r => r.source === 'folha');
+  const estadaoRows = rowsArr.filter(r => r.source === 'estadao');
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const safeTerm = safeName(keyword) || 'busca';
+  if (folhaRows.length) {
+    downloadBlob(new Blob([buildCsv(folhaRows)], { type: 'text/csv;charset=utf-8' }), `acervo-folha-${safeTerm}-${dateStr}.csv`);
+  }
+  if (estadaoRows.length) {
+    downloadBlob(new Blob([buildCsv(estadaoRows)], { type: 'text/csv;charset=utf-8' }), `acervo-estadao-${safeTerm}-${dateStr}.csv`);
+  }
   return { folha: folhaRows.length, estadao: estadaoRows.length };
 }
+
+// === Download em lotes (ZIP) ===
+
+function imagesAvailable(rowsArr) {
+  const folha = rowsArr.filter(r => r.source === 'folha' && r.full_jpg_url);
+  const estadao = rowsArr.filter(r => r.source === 'estadao' && r.page_image_url_high_res);
+  return { folha, estadao };
+}
+
+function refreshDownloadPanel() {
+  const { folha, estadao } = imagesAvailable(lastRunRows);
+  const opts = [];
+  if (folha.length) opts.push({ value: 'folha', label: `Folha — ${folha.length} imagens (~${Math.round(folha.length * 1.4)} MB)` });
+  if (estadao.length) opts.push({ value: 'estadao', label: `Estadao — ${estadao.length} imagens (~${Math.round(estadao.length * 1.0)} MB)` });
+  if (!opts.length) {
+    downloadPanel.hidden = true;
+    return;
+  }
+  downloadPanel.hidden = false;
+  downloadSourceSel.innerHTML = opts.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+  updateBatchHint();
+}
+
+function updateBatchHint() {
+  const source = downloadSourceSel.value;
+  const list = source === 'folha'
+    ? imagesAvailable(lastRunRows).folha
+    : imagesAvailable(lastRunRows).estadao;
+  const cursor = batchCursor[source] || 0;
+  const restante = list.length - cursor;
+  const batch = Number(batchSizeInput.value) || 200;
+  const totalLotes = Math.ceil(list.length / batch);
+  const loteAtual = Math.floor(cursor / batch) + 1;
+  if (restante <= 0) {
+    downloadSummary.textContent = `Tudo baixado — ${list.length} imagens em ${totalLotes} lote(s).`;
+    downloadButton.disabled = true;
+    downloadButton.textContent = 'Tudo baixado';
+  } else {
+    downloadSummary.textContent = `${list.length} imagens disponiveis. Proximo lote: ${loteAtual}/${totalLotes} (${Math.min(batch, restante)} arquivos).`;
+    downloadButton.disabled = false;
+    downloadButton.textContent = `Baixar lote ${loteAtual}/${totalLotes}`;
+  }
+}
+
+async function downloadNextBatch() {
+  const source = downloadSourceSel.value;
+  const password = document.querySelector('#password').value;
+  const list = source === 'folha'
+    ? imagesAvailable(lastRunRows).folha
+    : imagesAvailable(lastRunRows).estadao;
+  const cursor = batchCursor[source] || 0;
+  const batch = Number(batchSizeInput.value) || 200;
+  const delayMs = Number(downloadDelayInput.value) || 400;
+  const start = cursor;
+  const end = Math.min(list.length, start + batch);
+  const loteAtual = Math.floor(start / batch) + 1;
+  const totalLotes = Math.ceil(list.length / batch);
+  const taskId = `download-${source}-${loteAtual}`;
+  addTask({ id: taskId, label: `Baixar ZIP — ${source} lote ${loteAtual}/${totalLotes}`, weight: 25, total: end - start, done: 0, status: 'running', detail: `${end - start} imagens` });
+  downloadButton.disabled = true;
+  stopButton.disabled = false;
+  stopped = false;
+  const zip = new JSZip();
+  let okCount = 0;
+  let failCount = 0;
+  for (let i = start; i < end; i += 1) {
+    if (stopped) break;
+    const row = list[i];
+    const url = source === 'folha' ? row.full_jpg_url : row.page_image_url_high_res;
+    const filename = source === 'folha'
+      ? `folha-${row.date.replace(/\//g, '-')}-${row.numero}-${row.anchor}.jpg`
+      : `${row.file_id}.jpg`;
+    try {
+      const blob = await proxyFetchBlob({ source: 'image_proxy', url }, password);
+      const buf = await blob.arrayBuffer();
+      zip.file(filename, buf);
+      okCount += 1;
+    } catch (error) {
+      log(`Imagem erro ${filename}: ${error.message}`);
+      failCount += 1;
+    }
+    updateTask(taskId, { done: i - start + 1, detail: `${okCount} ok, ${failCount} erros` });
+    if (i + 1 < end) await sleep(delayMs);
+  }
+  if (okCount > 0) {
+    updateTask(taskId, { detail: `compactando ${okCount} arquivos…` });
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+    const safeTerm = safeName(lastRunKeyword) || 'busca';
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `acervo-${source}-${safeTerm}-${dateStr}-lote-${loteAtual}-de-${totalLotes}.zip`;
+    downloadBlob(blob, filename);
+    log(`ZIP gerado: ${filename} (${okCount} imagens, ${failCount} erros)`);
+  } else {
+    log(`Lote ${loteAtual} sem imagens com sucesso, ZIP nao gerado`);
+  }
+  batchCursor[source] = end;
+  updateTask(taskId, { status: failCount === (end - start) ? 'error' : 'done', detail: `${okCount} ok, ${failCount} erros — ZIP entregue` });
+  stopButton.disabled = true;
+  updateBatchHint();
+}
+
+// === Handlers ===
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -339,7 +585,11 @@ form.addEventListener('submit', async (event) => {
   }
   stopped = false;
   logEl.textContent = '';
-  progress.value = 0;
+  countEl.textContent = '0 linhas';
+  resetTasks();
+  downloadPanel.hidden = true;
+  batchCursor.folha = 0;
+  batchCursor.estadao = 0;
   const options = {
     password: document.querySelector('#password').value,
     keyword: document.querySelector('#keyword').value.trim(),
@@ -353,25 +603,38 @@ form.addEventListener('submit', async (event) => {
   sessionStorage.setItem('acervo-tool-key', options.password);
   runButton.disabled = true;
   stopButton.disabled = false;
-  const rows = [];
+  const rowsArr = [];
   const seen = new Set();
+  lastRunRows = rowsArr;
+  lastRunKeyword = options.keyword;
+
+  if (options.source === 'folha' || options.source === 'both') {
+    addTask({ id: 'folha-search', label: 'Folha — buscas paginadas', weight: 10 });
+  }
+  if (options.source === 'estadao' || options.source === 'both') {
+    addTask({ id: 'estadao-search', label: 'Estadao — buscas mensais paginadas', weight: 20 });
+    if (options.highRes) {
+      addTask({ id: 'estadao-hires', label: 'Estadao — URLs em alta resolucao', weight: 30 });
+    }
+  }
 
   try {
-    setStatus('Rodando', 'A coleta comecou. Mantenha esta aba aberta.');
+    setStatus('Rodando', 'Coletando metadados. Mantenha a aba aberta.');
     if (options.source === 'folha' || options.source === 'both') {
-      await scrapeFolha(options, rows, seen);
+      await scrapeFolha(options, rowsArr, seen);
     }
     if (!stopped && (options.source === 'estadao' || options.source === 'both')) {
-      await scrapeEstadao(options, rows, seen);
+      await scrapeEstadao(options, rowsArr, seen);
     }
-    if (rows.length) {
-      const counts = downloadCsvs(rows, options.keyword);
+    if (rowsArr.length) {
+      const counts = downloadCsvs(rowsArr, options.keyword);
       const detail = [
-        counts.folha ? `folha: ${counts.folha}` : null,
-        counts.estadao ? `estadao: ${counts.estadao}` : null
+        counts.folha ? `Folha: ${counts.folha}` : null,
+        counts.estadao ? `Estadao: ${counts.estadao}` : null
       ].filter(Boolean).join(' · ');
-      setStatus(stopped ? 'Parado' : 'Concluido', `CSV(s) gerado(s) — ${detail}.`);
+      setStatus(stopped ? 'Parado' : 'Concluido', `CSV(s) baixado(s) — ${detail}.`);
       log(`CSV(s) gerado(s): ${detail}`);
+      refreshDownloadPanel();
     } else {
       setStatus('Sem resultados', 'Nenhuma linha foi coletada.');
     }
@@ -389,6 +652,24 @@ stopButton.addEventListener('click', () => {
   stopped = true;
   log('Parada solicitada. A requisicao atual ainda pode terminar.');
 });
+
+downloadButton.addEventListener('click', () => {
+  downloadNextBatch().catch(error => {
+    console.error(error);
+    log(`Erro no lote: ${error.message}`);
+    downloadButton.disabled = false;
+  });
+});
+
+downloadReset.addEventListener('click', () => {
+  batchCursor.folha = 0;
+  batchCursor.estadao = 0;
+  updateBatchHint();
+  log('Contagem de lotes reiniciada.');
+});
+
+downloadSourceSel.addEventListener('change', updateBatchHint);
+batchSizeInput.addEventListener('change', updateBatchHint);
 
 const savedKey = sessionStorage.getItem('acervo-tool-key');
 if (savedKey) document.querySelector('#password').value = savedKey;

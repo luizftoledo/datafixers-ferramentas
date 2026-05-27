@@ -30,6 +30,7 @@ export async function onRequest(context) {
 
   let target;
   let upstreamContentType = 'text/html; charset=utf-8';
+  let passthroughBinary = false;
   if (source === 'folha') {
     if (!query || query.length < 3 || query.length > 80) {
       return new Response('invalid query', { status: 400, headers: corsHeaders });
@@ -48,17 +49,52 @@ export async function onRequest(context) {
     target = new URL('https://acervo.estadao.com.br/servicos/montaPagina.php');
     target.searchParams.set('nome_arquivo', fileId);
     upstreamContentType = 'application/json; charset=utf-8';
+  } else if (source === 'image_proxy') {
+    const raw = url.searchParams.get('url') || '';
+    let parsed;
+    try { parsed = new URL(raw); } catch (_e) {
+      return new Response('invalid image url', { status: 400, headers: corsHeaders });
+    }
+    const allowedHosts = new Set([
+      'acervo.estadao.com.br',
+      'acervo.folha.uol.com.br',
+      'acervo.folha.com.br'
+    ]);
+    if (parsed.protocol !== 'https:' || !allowedHosts.has(parsed.hostname)) {
+      return new Response('host not allowed', { status: 400, headers: corsHeaders });
+    }
+    if (!/\.(jpe?g|png|pdf)$/i.test(parsed.pathname)) {
+      return new Response('only jpg/png/pdf allowed', { status: 400, headers: corsHeaders });
+    }
+    target = parsed;
+    passthroughBinary = true;
   } else {
     return new Response('invalid source', { status: 400, headers: corsHeaders });
   }
 
   const upstream = await fetch(target.toString(), {
     headers: {
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept': passthroughBinary
+        ? 'image/jpeg,image/png,application/pdf,*/*;q=0.8'
+        : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'User-Agent': 'Mozilla/5.0 (compatible; datafixers-acervo-temporario/1.0)'
     },
-    cf: { cacheTtl: 0, cacheEverything: false }
+    cf: { cacheTtl: passthroughBinary ? 3600 : 0, cacheEverything: passthroughBinary }
   });
+
+  if (passthroughBinary) {
+    const buf = await upstream.arrayBuffer();
+    const upstreamCT = upstream.headers.get('content-type') || 'application/octet-stream';
+    return new Response(buf, {
+      status: upstream.status,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': upstreamCT,
+        'X-Upstream-Status': String(upstream.status)
+      }
+    });
+  }
+
   const upstreamCT = upstream.headers.get('content-type') || '';
   const upstreamCharset = (upstreamCT.match(/charset=([^;]+)/i) || [])[1]?.toLowerCase().trim();
   let body;
