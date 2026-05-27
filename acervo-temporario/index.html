@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Acervo temporario</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <p class="eyebrow">Data Fixers · ferramenta temporaria</p>
+      <h1>Busca em acervos</h1>
+      <p class="lede">Coleta metadados publicos de resultados da Folha e do Estadao e baixa um CSV no seu navegador.</p>
+    </header>
+
+    <section class="panel">
+      <form id="search-form">
+        <div class="grid">
+          <label>
+            Senha
+            <input id="password" type="password" autocomplete="current-password" required>
+          </label>
+          <label>
+            Palavra-chave
+            <input id="keyword" type="text" minlength="3" maxlength="80" placeholder="Mackenzie" required>
+          </label>
+          <label>
+            Fonte
+            <select id="source">
+              <option value="both">Folha e Estadao</option>
+              <option value="folha">Folha</option>
+              <option value="estadao">Estadao</option>
+            </select>
+          </label>
+          <label>
+            Inicio
+            <input id="start-date" type="date">
+          </label>
+          <label>
+            Fim
+            <input id="end-date" type="date">
+          </label>
+          <label>
+            Pausa entre paginas, ms
+            <input id="delay" type="number" min="250" max="5000" step="50" value="650">
+          </label>
+          <label>
+            Limite de paginas por fonte
+            <input id="max-pages" type="number" min="1" max="3000" value="3000">
+          </label>
+        </div>
+        <div class="actions">
+          <button id="run-button" type="submit">Rodar busca</button>
+          <button id="stop-button" type="button" disabled>Parar</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="progress-row">
+        <div>
+          <strong id="status-title">Pronto</strong>
+          <p id="status-detail">Informe senha, termo e periodo. Para Estadao, usar periodo reduz muito a coleta.</p>
+        </div>
+        <span id="count">0 linhas</span>
+      </div>
+      <progress id="progress" value="0" max="1"></progress>
+      <pre id="log" aria-live="polite"></pre>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

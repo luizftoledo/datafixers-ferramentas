@@ -1,0 +1,160 @@
+:root {
+  color-scheme: light;
+  --bg: #f5f4ef;
+  --ink: #1f2328;
+  --muted: #626a73;
+  --line: #d8d5cc;
+  --panel: #fffefa;
+  --accent: #17594a;
+  --danger: #9f1d20;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.shell {
+  width: min(980px, calc(100% - 32px));
+  margin: 48px auto;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 42px;
+  font-weight: 600;
+}
+
+.lede {
+  max-width: 680px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.panel {
+  margin-top: 24px;
+  padding: 22px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+input,
+select,
+button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 0 11px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+button {
+  padding: 0 16px;
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+#stop-button {
+  background: white;
+  color: var(--danger);
+  border-color: #d9a4a6;
+}
+
+.progress-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.progress-row p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+#count {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+progress {
+  width: 100%;
+  height: 12px;
+  margin: 18px 0;
+}
+
+#log {
+  min-height: 180px;
+  max-height: 320px;
+  overflow: auto;
+  margin: 0;
+  padding: 14px;
+  background: #171b20;
+  color: #d7dde5;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  h1 {
+    font-size: 34px;
+  }
+}
