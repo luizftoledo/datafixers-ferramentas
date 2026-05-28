@@ -21,8 +21,11 @@ const downloadDelayInput = document.querySelector('#download-delay');
 const csvRescuePanel = document.querySelector('#csv-rescue');
 const rescueFolha = document.querySelector('#rescue-folha');
 const rescueEstadao = document.querySelector('#rescue-estadao');
+const uploadInput = document.querySelector('#upload-csv');
+const uploadButton = document.querySelector('#upload-button');
+const uploadStatus = document.querySelector('#upload-status');
 
-const EXPIRES_AT = new Date('2026-05-28T21:27:28Z');
+const EXPIRES_AT = new Date('2026-06-28T23:59:59Z');
 let stopped = false;
 let lastRunRows = [];
 let lastRunKeyword = '';
@@ -740,3 +743,95 @@ rescueEstadao.addEventListener('click', () => {
 
 const savedKey = sessionStorage.getItem('acervo-tool-key');
 if (savedKey) document.querySelector('#password').value = savedKey;
+
+// === Upload de planilha pronta ===
+
+function parseCsv(text) {
+  const rows = [];
+  let cur = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i += 1; }
+        else { inQuotes = false; }
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === ',') {
+      cur.push(field); field = '';
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i += 1;
+      cur.push(field); rows.push(cur); cur = []; field = '';
+    } else {
+      field += c;
+    }
+  }
+  if (field.length > 0 || cur.length > 0) { cur.push(field); rows.push(cur); }
+  return rows.filter(r => !(r.length === 1 && r[0] === ''));
+}
+
+function rowsFromCsvText(text) {
+  const grid = parseCsv(text);
+  if (!grid.length) return { header: [], rows: [] };
+  const header = grid[0];
+  const rows = grid.slice(1).map(values => {
+    const obj = {};
+    header.forEach((key, idx) => { obj[key] = values[idx] ?? ''; });
+    return obj;
+  });
+  return { header, rows };
+}
+
+async function handleUpload() {
+  const file = uploadInput.files && uploadInput.files[0];
+  if (!file) { uploadStatus.textContent = 'Selecione um arquivo CSV primeiro.'; return; }
+  const password = document.querySelector('#password').value;
+  if (!password) { uploadStatus.textContent = 'Preencha a senha no topo da página antes de baixar as imagens.'; return; }
+
+  uploadStatus.textContent = 'Lendo planilha…';
+  const text = await file.text();
+  const { header, rows } = rowsFromCsvText(text);
+  if (!rows.length) { uploadStatus.textContent = 'Nenhuma linha encontrada na planilha.'; return; }
+
+  rows.forEach((row, idx) => {
+    if (!row.source) {
+      if (row.full_jpg_url) row.source = 'folha';
+      else if (row.page_image_url_high_res) row.source = 'estadao';
+    }
+    if (!row.result_index) row.result_index = idx + 1;
+  });
+
+  const folha = rows.filter(r => r.source === 'folha' && r.full_jpg_url).length;
+  const estadao = rows.filter(r => r.source === 'estadao' && r.page_image_url_high_res).length;
+  if (folha + estadao === 0) {
+    uploadStatus.textContent = 'Planilha sem colunas reconhecidas. Precisa ter full_jpg_url (Folha) ou page_image_url_high_res (Estadão). Use o CSV gerado por esta ferramenta.';
+    return;
+  }
+
+  lastRunRows = rows;
+  const keywordFromCsv = (rows.find(r => r.keyword) || {}).keyword;
+  const keywordFromFile = file.name.replace(/\.[^.]+$/, '');
+  lastRunKeyword = keywordFromCsv || keywordFromFile;
+  batchCursor.folha = 0;
+  batchCursor.estadao = 0;
+  countEl.textContent = `${rows.length} linhas`;
+  refreshDownloadPanel();
+  const partes = [folha ? `Folha: ${folha}` : null, estadao ? `Estadão: ${estadao}` : null].filter(Boolean).join(' · ');
+  setStatus('Planilha carregada', `${rows.length} linhas — siga pro painel de download em lotes abaixo.`);
+  uploadStatus.textContent = `Carregado: ${partes}. O painel de download apareceu acima.`;
+  log(`Planilha "${file.name}" carregada — ${partes}`);
+  const panel = document.querySelector('#download-panel');
+  if (panel && !panel.hidden) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+uploadButton.addEventListener('click', () => {
+  handleUpload().catch(error => {
+    console.error(error);
+    uploadStatus.textContent = `Erro ao ler planilha: ${error.message}`;
+  });
+});

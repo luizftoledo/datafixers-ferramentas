@@ -137,6 +137,27 @@
       </p>
     </section>
 
+    <section id="upload-panel" class="panel">
+      <h2 class="panel-title">Já tem a planilha? Suba ela aqui pra baixar as imagens</h2>
+      <p class="panel-sub">
+        Se você já rodou a busca antes e salvou o CSV (da Folha ou do Estadão), pode pular a busca
+        e mandar a planilha aqui pra baixar as imagens em lotes ZIP. A planilha precisa ser a que
+        esta ferramenta gera — ela usa as colunas <code>full_jpg_url</code> (Folha) e
+        <code>page_image_url_high_res</code> (Estadão) pra descobrir as URLs das páginas.
+        <strong>Preencha a senha no topo da página antes</strong> — ela é usada pra autenticar o proxy.
+      </p>
+      <div class="grid grid-3">
+        <label>
+          Planilha CSV
+          <input id="upload-csv" type="file" accept=".csv,text/csv">
+        </label>
+      </div>
+      <div class="actions">
+        <button id="upload-button" type="button">Carregar planilha</button>
+      </div>
+      <p id="upload-status" class="panel-sub"></p>
+    </section>
+
     <section class="panel">
       <h2 class="panel-title">Log</h2>
       <pre id="log" aria-live="polite"></pre>
