@@ -4,15 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow">
-  <title>Acervo temporario</title>
+  <title>Acervo temporário</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <main class="shell">
     <header>
-      <p class="eyebrow">Data Fixers · ferramenta temporaria</p>
+      <p class="eyebrow">Data Fixers · ferramenta temporária</p>
       <h1>Busca em acervos</h1>
-      <p class="lede">Coleta metadados publicos de resultados da Folha e do Estadao, baixa um CSV por fonte e (opcional) empacota as imagens em lotes ZIP.</p>
+      <p class="lede">Coleta metadados públicos de resultados da Folha e do Estadão, baixa um CSV por fonte e (opcional) empacota as imagens em lotes ZIP.</p>
     </header>
 
     <section class="panel">
@@ -29,13 +29,13 @@
           <label>
             Fonte
             <select id="source">
-              <option value="both">Folha e Estadao</option>
+              <option value="both">Folha e Estadão</option>
               <option value="folha">Folha</option>
-              <option value="estadao">Estadao</option>
+              <option value="estadao">Estadão</option>
             </select>
           </label>
           <label>
-            Inicio
+            Início
             <input id="start-date" type="date">
           </label>
           <label>
@@ -44,21 +44,21 @@
           </label>
           <label class="checkbox-label">
             <input id="high-res" type="checkbox" checked>
-            Estadao: incluir URL da imagem em alta resolucao (1 requisicao extra por pagina unica)
+            Estadão: incluir URL da imagem em alta resolução (1 requisição extra por página única)
           </label>
         </div>
         <details class="advanced">
-          <summary>Opcoes avancadas</summary>
+          <summary>Opções avançadas</summary>
           <div class="grid">
             <label>
-              Pausa entre paginas, ms
+              Pausa entre páginas, ms
               <input id="delay" type="number" min="250" max="5000" step="50" value="650">
-              <span class="field-hint">Tempo entre requisicoes. Menor = mais rapido, mas mais chance de o servidor bloquear.</span>
+              <span class="field-hint">Tempo entre requisições. Menor = mais rápido, mas mais chance de o servidor bloquear.</span>
             </label>
             <label>
-              Limite de paginas por fonte
+              Limite de páginas por fonte
               <input id="max-pages" type="number" min="1" max="3000" value="3000">
-              <span class="field-hint">Trava de seguranca. Deixe alto a menos que esteja testando.</span>
+              <span class="field-hint">Trava de segurança. Deixe alto a menos que esteja testando.</span>
             </label>
           </div>
         </details>
@@ -67,8 +67,8 @@
           <button id="stop-button" type="button" disabled>Parar</button>
         </div>
         <p class="coverage-note">
-          <strong>Cobertura dos acervos:</strong> A <strong>Folha</strong> indexa ate a edicao mais recente (a busca cobre o dia anterior).
-          O <strong>Estadao</strong> tem alguns meses de atraso na digitalizacao — atualmente o acervo cobre confiavelmente ate
+          <strong>Cobertura dos acervos:</strong> A <strong>Folha</strong> indexa até a edição mais recente (a busca cobre o dia anterior).
+          O <strong>Estadão</strong> tem alguns meses de atraso na digitalização — atualmente o acervo cobre confiavelmente até
           <strong id="estadao-cutoff">~fevereiro de 2026</strong>. Buscas em datas posteriores podem retornar zero, mesmo que o termo exista.
         </p>
       </form>
@@ -78,7 +78,7 @@
       <div class="overall-row">
         <div>
           <strong id="status-title">Pronto</strong>
-          <p id="status-detail">Preencha os campos acima e clique em "Rodar busca". Pra Estadao, preencher Inicio e Fim acelera bastante (sem isso, ele varre todos os meses do acervo, ano por ano).</p>
+          <p id="status-detail">Preencha os campos acima e clique em "Rodar busca". Pra Estadão, preencher Início e Fim acelera bastante (sem isso, ele varre todos os meses do acervo, ano por ano).</p>
         </div>
         <span id="count">0 linhas</span>
       </div>
@@ -89,14 +89,27 @@
       <ol id="task-list" class="task-list"></ol>
     </section>
 
-    <section id="download-panel" class="panel" hidden>
-      <h2 class="panel-title">Opcional: baixar as paginas digitalizadas (JPG)</h2>
+    <section id="csv-rescue" class="panel" hidden>
+      <h2 class="panel-title">Não recebeu o CSV?</h2>
       <p class="panel-sub">
-        A planilha (CSV) ja foi baixada — ela tem todos os metadados (data, edicao, pagina, links).
-        Use esta secao SOMENTE se voce tambem quer as imagens das paginas em alta resolucao no seu computador.
-        Pra nao travar o navegador, dividimos em <strong>lotes</strong>: voce clica em "Baixar lote 1", recebe um ZIP,
-        clica de novo pra "Baixar lote 2", e assim por diante ate baixar todos.
-        Se algum lote der erro, basta clicar de novo no mesmo botao — ele tenta de novo.
+        Quando uma busca tem resultados nos dois jornais, o navegador às vezes bloqueia o segundo download
+        e mostra um pop-up "Permitir múltiplos downloads?". Se você não viu o pop-up ou não aceitou,
+        use os botões abaixo pra baixar de novo manualmente.
+      </p>
+      <div class="actions">
+        <button id="rescue-folha" type="button" class="secondary" hidden>Baixar CSV da Folha</button>
+        <button id="rescue-estadao" type="button" class="secondary" hidden>Baixar CSV do Estadão</button>
+      </div>
+    </section>
+
+    <section id="download-panel" class="panel" hidden>
+      <h2 class="panel-title">Opcional: baixar as páginas digitalizadas (JPG)</h2>
+      <p class="panel-sub">
+        A planilha (CSV) já foi baixada — ela tem todos os metadados (data, edição, página, links).
+        Use esta seção SOMENTE se você também quer as imagens das páginas em alta resolução no seu computador.
+        Pra não travar o navegador, dividimos em <strong>lotes</strong>: você clica em "Baixar lote 1", recebe um ZIP,
+        clica de novo pra "Baixar lote 2", e assim por diante até baixar todos.
+        Se algum lote der erro, basta clicar de novo no mesmo botão — ele tenta de novo.
       </p>
       <p class="panel-sub" id="download-summary"><strong>Aguarde a busca terminar.</strong></p>
       <div class="grid grid-3">
@@ -115,11 +128,11 @@
       </div>
       <div class="actions">
         <button id="download-button" type="button">Baixar lote</button>
-        <button id="download-retry" type="button" class="secondary" hidden>Refazer ultimo lote</button>
-        <button id="download-reset" type="button" class="secondary">Recomecar do lote 1</button>
+        <button id="download-retry" type="button" class="secondary" hidden>Refazer último lote</button>
+        <button id="download-reset" type="button" class="secondary">Recomeçar do lote 1</button>
       </div>
       <p id="download-hint" class="panel-sub">
-        Cada arquivo dentro do ZIP tem o nome da pagina (ex: <code>19670430-28233-nac-0019-999-19-not.jpg</code>).
+        Cada arquivo dentro do ZIP tem o nome da página (ex: <code>19670430-28233-nac-0019-999-19-not.jpg</code>).
         Mantenha a aba aberta enquanto baixa. Cada imagem tem cerca de 1 MB.
       </p>
     </section>

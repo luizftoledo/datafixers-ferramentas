@@ -18,6 +18,9 @@ const downloadSummary = document.querySelector('#download-summary');
 const downloadHint = document.querySelector('#download-hint');
 const batchSizeInput = document.querySelector('#batch-size');
 const downloadDelayInput = document.querySelector('#download-delay');
+const csvRescuePanel = document.querySelector('#csv-rescue');
+const rescueFolha = document.querySelector('#rescue-folha');
+const rescueEstadao = document.querySelector('#rescue-estadao');
 
 const EXPIRES_AT = new Date('2026-05-28T21:27:28Z');
 let stopped = false;
@@ -303,7 +306,7 @@ function monthChunks(startISO, endISO) {
 // === Scrapers ===
 
 async function scrapeFolha(options, rows, seen) {
-  log('Folha: lendo pagina 1');
+  log('Folha: lendo página 1');
   updateTask('folha', { status: 'running', detail: 'Buscando resultados...' });
   const firstHtml = await proxyFetch({
     source: 'folha',
@@ -315,12 +318,12 @@ async function scrapeFolha(options, rows, seen) {
   const first = parseFolhaItems(firstHtml, 1);
   const total = parseFolhaTotal(first.doc);
   const totalPages = Math.min(Math.ceil(total / 20) || 1, options.maxPages);
-  log(`Folha: ${total} resultados, ${totalPages} paginas planejadas`);
+  log(`Folha: ${total} resultados, ${totalPages} páginas planejadas`);
   if (total === 0) {
-    updateTask('folha', { status: 'done', total: 1, done: 1, detail: 'Nenhum resultado nesse periodo' });
+    updateTask('folha', { status: 'done', total: 1, done: 1, detail: 'Nenhum resultado nesse período' });
     return;
   }
-  updateTask('folha', { total: totalPages, done: 1, detail: `${total} resultados — pagina 1/${totalPages}` });
+  updateTask('folha', { total: totalPages, done: 1, detail: `${total} resultados — página 1/${totalPages}` });
   addRows(first.rows, rows, seen, 'folha');
 
   for (let page = 2; page <= totalPages; page += 1) {
@@ -334,18 +337,18 @@ async function scrapeFolha(options, rows, seen) {
       endDate: toBRDate(options.endDate)
     }, options.password);
     addRows(parseFolhaItems(html, page).rows, rows, seen, 'folha');
-    updateTask('folha', { done: page, detail: `${total} resultados — pagina ${page}/${totalPages}` });
+    updateTask('folha', { done: page, detail: `${total} resultados — página ${page}/${totalPages}` });
   }
   if (!stopped) {
     const collected = rows.filter(r => r.source === 'folha').length;
-    updateTask('folha', { status: 'done', done: totalPages || 1, total: totalPages || 1, detail: `${collected} ocorrencias coletadas` });
+    updateTask('folha', { status: 'done', done: totalPages || 1, total: totalPages || 1, detail: `${collected} ocorrências coletadas` });
   }
 }
 
 async function scrapeEstadao(options, rows, seen) {
   const chunks = monthChunks(options.startDate, options.endDate);
-  log(`Estadao: ${chunks.length} bloco(s) de periodo`);
-  updateTask('estadao', { status: 'running', total: chunks.length, done: 0, detail: `Etapa 1/2 — varrendo ${chunks.length} mes(es)` });
+  log(`Estadão: ${chunks.length} bloco(s) de período`);
+  updateTask('estadao', { status: 'running', total: chunks.length, done: 0, detail: `Etapa 1/2 — varrendo ${chunks.length} mês(es)` });
   let chunkIndex = 0;
   let totalOccurrences = 0;
   let monthsWithData = 0;
@@ -353,8 +356,8 @@ async function scrapeEstadao(options, rows, seen) {
     if (stopped) break;
     chunkIndex += 1;
     const label = chunk.year ? `${chunk.month}/${chunk.year}` : 'periodo completo';
-    log(`Estadao: lendo ${label}`);
-    updateTask('estadao', { done: chunkIndex - 1, detail: `Etapa 1/2 — buscando em ${label} (${chunkIndex}/${chunks.length})` });
+    log(`Estadão: lendo ${label}`);
+    updateTask('estadao', { done: chunkIndex - 1, detail: `Etapa 1/2 — buscando em ${label} (mês ${chunkIndex} de ${chunks.length})` });
     const firstHtml = await proxyFetch({
       source: 'estadao',
       q: options.keyword,
@@ -368,7 +371,7 @@ async function scrapeEstadao(options, rows, seen) {
       totalOccurrences += total;
     }
     const totalPages = Math.min(Math.ceil(total / 10) || 1, options.maxPages);
-    log(`Estadao ${label}: ${total} ocorrencias, ${totalPages} paginas planejadas`);
+    log(`Estadão ${label}: ${total} ocorrências, ${totalPages} páginas planejadas`);
     addRows(first.rows, rows, seen, 'estadao');
 
     for (let page = 2; page <= totalPages; page += 1) {
@@ -381,7 +384,7 @@ async function scrapeEstadao(options, rows, seen) {
         ...chunk
       }, options.password);
       addRows(parseEstadaoItems(html, page, options.startDate, options.endDate).rows, rows, seen, 'estadao');
-      updateTask('estadao', { detail: `Etapa 1/2 — ${label}, pagina ${page}/${totalPages} (mes ${chunkIndex}/${chunks.length})` });
+      updateTask('estadao', { detail: `Etapa 1/2 — ${label}, página ${page}/${totalPages} (mês ${chunkIndex}/${chunks.length})` });
     }
     updateTask('estadao', { done: chunkIndex });
   }
@@ -389,19 +392,19 @@ async function scrapeEstadao(options, rows, seen) {
 
   const estadaoRows = rows.filter(r => r.source === 'estadao');
   if (estadaoRows.length === 0) {
-    let detail = `Nenhum resultado nesse periodo (varreu ${chunks.length} mes(es))`;
+    let detail = `Nenhum resultado nesse período (varreu ${chunks.length} mês(es))`;
     // Aviso especifico se o periodo eh muito recente (acervo do Estadao tem ~3 meses de atraso)
     const today = new Date();
     const cutoff = new Date(today.getFullYear(), today.getMonth() - 2, 1);
     const startDate = options.startDate ? new Date(`${options.startDate}T00:00:00`) : null;
     if (startDate && startDate >= cutoff) {
-      detail = `Nenhum resultado. O acervo do Estadao tem alguns meses de atraso na digitalizacao — tente um periodo que termine antes de ${cutoff.toLocaleDateString('pt-BR')}.`;
+      detail = `Nenhum resultado. O acervo do Estadão tem alguns meses de atraso na digitalização — tente um período que termine antes de ${cutoff.toLocaleDateString('pt-BR')}.`;
     }
     updateTask('estadao', { status: 'done', detail });
     return;
   }
   if (!options.highRes) {
-    updateTask('estadao', { status: 'done', detail: `${estadaoRows.length} ocorrencias coletadas (sem imagens em alta resolucao)` });
+    updateTask('estadao', { status: 'done', detail: `${estadaoRows.length} ocorrências coletadas (sem imagens em alta resolução)` });
     return;
   }
   await enrichEstadaoHighRes(rows, options, chunks.length, estadaoRows.length);
@@ -411,11 +414,11 @@ async function enrichEstadaoHighRes(rows, options, chunksCount, estadaoCount) {
   const targets = rows.filter(r => r.source === 'estadao' && r.file_id);
   const uniqueFiles = [...new Set(targets.map(r => r.file_id))];
   if (!uniqueFiles.length) {
-    updateTask('estadao', { status: 'done', detail: `${estadaoCount} ocorrencias coletadas (sem arquivos com ID — pulei alta resolucao)` });
+    updateTask('estadao', { status: 'done', detail: `${estadaoCount} ocorrências coletadas (sem arquivos com ID — pulei alta resolução)` });
     return;
   }
-  log(`Estadao: buscando imagem grande para ${uniqueFiles.length} arquivos unicos`);
-  updateTask('estadao', { status: 'running', total: uniqueFiles.length, done: 0, detail: `Etapa 2/2 — descobrindo URLs em alta para ${uniqueFiles.length} paginas` });
+  log(`Estadão: buscando imagem grande para ${uniqueFiles.length} arquivos únicos`);
+  updateTask('estadao', { status: 'running', total: uniqueFiles.length, done: 0, detail: `Etapa 2/2 — descobrindo URLs em alta para ${uniqueFiles.length} páginas` });
   const byFile = new Map();
   let idx = 0;
   for (const fileId of uniqueFiles) {
@@ -430,14 +433,14 @@ async function enrichEstadaoHighRes(rows, options, chunksCount, estadaoCount) {
         page_image_high_res_height: json.imagem_reader_height || ''
       });
     } catch (error) {
-      log(`Estadao meta erro em ${fileId}: ${error.message}`);
+      log(`Estadão (alta resolução) erro em ${fileId}: ${error.message}`);
       byFile.set(fileId, {
         page_image_url_high_res: '',
         page_image_high_res_width: '',
         page_image_high_res_height: ''
       });
     }
-    updateTask('estadao', { done: idx, detail: `Etapa 2/2 — ${idx}/${uniqueFiles.length} URLs em alta resolucao descobertas` });
+    updateTask('estadao', { done: idx, detail: `Etapa 2/2 — ${idx}/${uniqueFiles.length} URLs em alta resolução descobertas` });
     if (idx < uniqueFiles.length) await sleep(options.delay);
   }
   for (const row of rows) {
@@ -446,7 +449,7 @@ async function enrichEstadaoHighRes(rows, options, chunksCount, estadaoCount) {
     if (meta) Object.assign(row, meta);
   }
   if (!stopped) {
-    updateTask('estadao', { status: 'done', detail: `${estadaoCount} ocorrencias coletadas em ${uniqueFiles.length} paginas unicas` });
+    updateTask('estadao', { status: 'done', detail: `${estadaoCount} ocorrências coletadas em ${uniqueFiles.length} páginas únicas` });
   }
 }
 
@@ -485,18 +488,37 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(link.href), 4000);
 }
 
-function downloadCsvs(rowsArr, keyword) {
-  const folhaRows = rowsArr.filter(r => r.source === 'folha');
-  const estadaoRows = rowsArr.filter(r => r.source === 'estadao');
+function csvFilenameFor(source, keyword) {
   const dateStr = new Date().toISOString().slice(0, 10);
   const safeTerm = safeName(keyword) || 'busca';
-  if (folhaRows.length) {
-    downloadBlob(new Blob([buildCsv(folhaRows)], { type: 'text/csv;charset=utf-8' }), `acervo-folha-${safeTerm}-${dateStr}.csv`);
-  }
-  if (estadaoRows.length) {
-    downloadBlob(new Blob([buildCsv(estadaoRows)], { type: 'text/csv;charset=utf-8' }), `acervo-estadao-${safeTerm}-${dateStr}.csv`);
-  }
-  return { folha: folhaRows.length, estadao: estadaoRows.length };
+  return `acervo-${source}-${safeTerm}-${dateStr}.csv`;
+}
+
+function downloadOneCsv(source, rowsArr, keyword) {
+  const rows = rowsArr.filter(r => r.source === source);
+  if (!rows.length) return false;
+  downloadBlob(new Blob([buildCsv(rows)], { type: 'text/csv;charset=utf-8' }), csvFilenameFor(source, keyword));
+  return true;
+}
+
+function refreshCsvRescue(counts) {
+  const hasFolha = counts && counts.folha > 0;
+  const hasEstadao = counts && counts.estadao > 0;
+  rescueFolha.hidden = !hasFolha;
+  rescueEstadao.hidden = !hasEstadao;
+  rescueFolha.textContent = hasFolha ? `Baixar CSV da Folha (${counts.folha} linhas)` : 'Baixar CSV da Folha';
+  rescueEstadao.textContent = hasEstadao ? `Baixar CSV do Estadão (${counts.estadao} linhas)` : 'Baixar CSV do Estadão';
+  csvRescuePanel.hidden = !(hasFolha || hasEstadao);
+}
+
+async function downloadCsvs(rowsArr, keyword) {
+  const folhaCount = rowsArr.filter(r => r.source === 'folha').length;
+  const estadaoCount = rowsArr.filter(r => r.source === 'estadao').length;
+  if (folhaCount) downloadOneCsv('folha', rowsArr, keyword);
+  // Espera curta para evitar bloqueio do Chrome a downloads múltiplos automáticos.
+  if (folhaCount && estadaoCount) await sleep(900);
+  if (estadaoCount) downloadOneCsv('estadao', rowsArr, keyword);
+  return { folha: folhaCount, estadao: estadaoCount };
 }
 
 // === Download em lotes (ZIP) ===
@@ -511,7 +533,7 @@ function refreshDownloadPanel() {
   const { folha, estadao } = imagesAvailable(lastRunRows);
   const opts = [];
   if (folha.length) opts.push({ value: 'folha', label: `Folha — ${folha.length} imagens (~${Math.round(folha.length * 1.4)} MB)` });
-  if (estadao.length) opts.push({ value: 'estadao', label: `Estadao — ${estadao.length} imagens (~${Math.round(estadao.length * 1.0)} MB)` });
+  if (estadao.length) opts.push({ value: 'estadao', label: `Estadão — ${estadao.length} imagens (~${Math.round(estadao.length * 1.0)} MB)` });
   if (!opts.length) {
     downloadPanel.hidden = true;
     return;
@@ -536,9 +558,9 @@ function updateBatchHint() {
     downloadButton.disabled = true;
     downloadButton.textContent = 'Tudo baixado';
   } else {
-    downloadSummary.textContent = `${list.length} imagens disponiveis. Proximo lote: ${loteAtual}/${totalLotes} (${Math.min(batch, restante)} arquivos).`;
+    downloadSummary.textContent = `${list.length} imagens disponíveis. Próximo lote: ${loteAtual} de ${totalLotes} (${Math.min(batch, restante)} arquivos no próximo).`;
     downloadButton.disabled = false;
-    downloadButton.textContent = `Baixar lote ${loteAtual}/${totalLotes}`;
+    downloadButton.textContent = `Baixar lote ${loteAtual} de ${totalLotes}`;
   }
 }
 
@@ -556,7 +578,7 @@ async function downloadNextBatch() {
   const loteAtual = Math.floor(start / batch) + 1;
   const totalLotes = Math.ceil(list.length / batch);
   const taskId = `download-${source}-${loteAtual}`;
-  addTask({ id: taskId, label: `Baixar ZIP — ${source} lote ${loteAtual}/${totalLotes}`, weight: 25, total: end - start, done: 0, status: 'running', detail: `${end - start} imagens` });
+  addTask({ id: taskId, label: `Baixar ZIP — ${source} lote ${loteAtual} de ${totalLotes}`, weight: 25, total: end - start, done: 0, status: 'running', detail: `${end - start} imagens` });
   downloadButton.disabled = true;
   stopButton.disabled = false;
   stopped = false;
@@ -591,7 +613,7 @@ async function downloadNextBatch() {
     downloadBlob(blob, filename);
     log(`ZIP gerado: ${filename} (${okCount} imagens, ${failCount} erros)`);
   } else {
-    log(`Lote ${loteAtual} sem imagens com sucesso, ZIP nao gerado`);
+    log(`Lote ${loteAtual} sem imagens com sucesso, ZIP não gerado`);
   }
   batchCursor[source] = end;
   updateTask(taskId, { status: failCount === (end - start) ? 'error' : 'done', detail: `${okCount} ok, ${failCount} erros — ZIP entregue` });
@@ -604,7 +626,7 @@ async function downloadNextBatch() {
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (Date.now() > EXPIRES_AT.getTime()) {
-    setStatus('Expirado', 'Esta ferramenta temporaria venceu.');
+    setStatus('Expirado', 'Esta ferramenta temporária venceu.');
     return;
   }
   stopped = false;
@@ -612,6 +634,7 @@ form.addEventListener('submit', async (event) => {
   countEl.textContent = '0 linhas';
   resetTasks();
   downloadPanel.hidden = true;
+  csvRescuePanel.hidden = true;
   batchCursor.folha = 0;
   batchCursor.estadao = 0;
   const options = {
@@ -648,13 +671,14 @@ form.addEventListener('submit', async (event) => {
       await scrapeEstadao(options, rowsArr, seen);
     }
     if (rowsArr.length) {
-      const counts = downloadCsvs(rowsArr, options.keyword);
+      const counts = await downloadCsvs(rowsArr, options.keyword);
       const detail = [
         counts.folha ? `Folha: ${counts.folha}` : null,
-        counts.estadao ? `Estadao: ${counts.estadao}` : null
+        counts.estadao ? `Estadão: ${counts.estadao}` : null
       ].filter(Boolean).join(' · ');
-      setStatus(stopped ? 'Parado' : 'Concluido', `CSV(s) baixado(s) — ${detail}.`);
+      setStatus(stopped ? 'Parado' : 'Concluído', `CSV(s) baixado(s) — ${detail}. Se algum não chegou, use os botões abaixo.`);
       log(`CSV(s) gerado(s): ${detail}`);
+      refreshCsvRescue(counts);
       refreshDownloadPanel();
     } else {
       setStatus('Sem resultados', 'Nenhuma linha foi coletada.');
@@ -671,7 +695,7 @@ form.addEventListener('submit', async (event) => {
 
 stopButton.addEventListener('click', () => {
   stopped = true;
-  log('Parada solicitada. A requisicao atual ainda pode terminar.');
+  log('Parada solicitada. A requisição atual ainda pode terminar.');
 });
 
 downloadButton.addEventListener('click', () => {
@@ -691,6 +715,17 @@ downloadReset.addEventListener('click', () => {
 
 downloadSourceSel.addEventListener('change', updateBatchHint);
 batchSizeInput.addEventListener('change', updateBatchHint);
+
+rescueFolha.addEventListener('click', () => {
+  if (downloadOneCsv('folha', lastRunRows, lastRunKeyword)) {
+    log('CSV da Folha baixado novamente.');
+  }
+});
+rescueEstadao.addEventListener('click', () => {
+  if (downloadOneCsv('estadao', lastRunRows, lastRunKeyword)) {
+    log('CSV do Estadão baixado novamente.');
+  }
+});
 
 const savedKey = sessionStorage.getItem('acervo-tool-key');
 if (savedKey) document.querySelector('#password').value = savedKey;
