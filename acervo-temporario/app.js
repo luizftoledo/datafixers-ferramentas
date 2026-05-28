@@ -815,7 +815,9 @@ async function handleUpload() {
 
   lastRunRows = rows;
   const keywordFromCsv = (rows.find(r => r.keyword) || {}).keyword;
-  const keywordFromFile = file.name.replace(/\.[^.]+$/, '');
+  // Se o nome do arquivo segue o padrao "acervo-<fonte>-<termo>-AAAA-MM-DD.csv", extrai o <termo>.
+  const namedMatch = file.name.match(/^acervo-(?:folha|estadao)-(.+)-\d{4}-\d{2}-\d{2}\.csv$/i);
+  const keywordFromFile = namedMatch ? namedMatch[1] : file.name.replace(/\.[^.]+$/, '');
   lastRunKeyword = keywordFromCsv || keywordFromFile;
   batchCursor.folha = 0;
   batchCursor.estadao = 0;
