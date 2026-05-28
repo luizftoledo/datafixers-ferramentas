@@ -42,19 +42,26 @@
             Fim
             <input id="end-date" type="date">
           </label>
-          <label>
-            Pausa entre paginas, ms
-            <input id="delay" type="number" min="250" max="5000" step="50" value="650">
-          </label>
-          <label>
-            Limite de paginas por fonte
-            <input id="max-pages" type="number" min="1" max="3000" value="3000">
-          </label>
           <label class="checkbox-label">
             <input id="high-res" type="checkbox" checked>
             Estadao: incluir URL da imagem em alta resolucao (1 requisicao extra por pagina unica)
           </label>
         </div>
+        <details class="advanced">
+          <summary>Opcoes avancadas</summary>
+          <div class="grid">
+            <label>
+              Pausa entre paginas, ms
+              <input id="delay" type="number" min="250" max="5000" step="50" value="650">
+              <span class="field-hint">Tempo entre requisicoes. Menor = mais rapido, mas mais chance de o servidor bloquear.</span>
+            </label>
+            <label>
+              Limite de paginas por fonte
+              <input id="max-pages" type="number" min="1" max="3000" value="3000">
+              <span class="field-hint">Trava de seguranca. Deixe alto a menos que esteja testando.</span>
+            </label>
+          </div>
+        </details>
         <div class="actions">
           <button id="run-button" type="submit">Rodar busca</button>
           <button id="stop-button" type="button" disabled>Parar</button>
