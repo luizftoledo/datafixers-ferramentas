@@ -72,7 +72,7 @@ export async function onRequest(context) {
     return new Response('invalid source', { status: 400, headers: corsHeaders });
   }
 
-  const upstream = await fetch(target.toString(), {
+  const fetchOptions = {
     headers: {
       'Accept': passthroughBinary
         ? 'image/jpeg,image/png,application/pdf,*/*;q=0.8'
@@ -80,19 +80,41 @@ export async function onRequest(context) {
       'User-Agent': 'Mozilla/5.0 (compatible; datafixers-acervo-temporario/1.0)'
     },
     cf: { cacheTtl: passthroughBinary ? 3600 : 0, cacheEverything: passthroughBinary }
-  });
+  };
 
-  if (passthroughBinary) {
-    const buf = await upstream.arrayBuffer();
-    const upstreamCT = upstream.headers.get('content-type') || 'application/octet-stream';
-    return new Response(buf, {
-      status: upstream.status,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': upstreamCT,
-        'X-Upstream-Status': String(upstream.status)
+  // Retry para passthrough binario — "Network connection lost" ocorre as vezes na primeira tentativa.
+  let upstream;
+  let lastErr;
+  const maxAttempts = passthroughBinary ? 3 : 1;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      upstream = await fetch(target.toString(), fetchOptions);
+      if (passthroughBinary) {
+        // tenta drenar o body aqui pra capturar "connection lost" no retry
+        const buf = await upstream.arrayBuffer();
+        const upstreamCT = upstream.headers.get('content-type') || 'application/octet-stream';
+        return new Response(buf, {
+          status: upstream.status,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': upstreamCT,
+            'X-Upstream-Status': String(upstream.status),
+            'X-Proxy-Attempts': String(attempt)
+          }
+        });
       }
-    });
+      break;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < maxAttempts) {
+        await new Promise(r => setTimeout(r, 300 * attempt));
+        continue;
+      }
+      return new Response(`upstream error after ${maxAttempts} attempts: ${err.message}`, {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain; charset=utf-8' }
+      });
+    }
   }
 
   const upstreamCT = upstream.headers.get('content-type') || '';

@@ -592,13 +592,24 @@ async function downloadNextBatch() {
     const filename = source === 'folha'
       ? `folha-${row.date.replace(/\//g, '-')}-${row.numero}-${row.anchor}.jpg`
       : `${row.file_id}.jpg`;
-    try {
-      const blob = await proxyFetchBlob({ source: 'image_proxy', url }, password);
-      const buf = await blob.arrayBuffer();
-      zip.file(filename, buf);
+    let success = false;
+    let lastErr = '';
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        const blob = await proxyFetchBlob({ source: 'image_proxy', url }, password);
+        const buf = await blob.arrayBuffer();
+        zip.file(filename, buf);
+        success = true;
+        break;
+      } catch (error) {
+        lastErr = error.message;
+        if (attempt < 2) await sleep(500);
+      }
+    }
+    if (success) {
       okCount += 1;
-    } catch (error) {
-      log(`Imagem erro ${filename}: ${error.message}`);
+    } else {
+      log(`Imagem erro ${filename}: ${lastErr}`);
       failCount += 1;
     }
     updateTask(taskId, { done: i - start + 1, detail: `${okCount} ok, ${failCount} erros` });
