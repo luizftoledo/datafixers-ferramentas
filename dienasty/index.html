@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Sala de escuta — A/B</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0b09;
+  --panel:#16140f;
+  --panel-edge:#26221a;
+  --ink:#ece5d8;
+  --ink-dim:#8d8474;
+  --amber:#f5a623;
+  --amber-soft:rgba(245,166,35,.14);
+  --red:#e8543f;
+  --red-soft:rgba(232,84,63,.14);
+  --radius:18px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'IBM Plex Sans',sans-serif;
+  min-height:100vh;
+  min-height:100dvh;
+}
+/* grain de fita */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.wrap{position:relative;z-index:1;max-width:680px;margin:0 auto;padding:28px 18px 80px}
+
+/* ---------- GATE ---------- */
+#gate{
+  position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(120% 90% at 50% 0%, #181510 0%, var(--bg) 70%);
+  padding:24px;
+}
+.gate-card{width:100%;max-width:380px;text-align:center}
+.gate-card .dot{
+  width:14px;height:14px;border-radius:50%;background:var(--red);margin:0 auto 22px;
+  box-shadow:0 0 18px var(--red);animation:pulse 2.2s ease-in-out infinite;
+}
+@keyframes pulse{50%{opacity:.35;box-shadow:0 0 4px var(--red)}}
+.gate-card h1{
+  font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:clamp(26px,7vw,34px);
+  letter-spacing:-.02em;margin-bottom:8px;
+}
+.gate-card p{color:var(--ink-dim);font-size:14px;margin-bottom:26px}
+.gate-row{display:flex;gap:10px}
+#pw{
+  flex:1;background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;
+  padding:14px 16px;color:var(--ink);font-size:16px;font-family:inherit;outline:none;
+  transition:border-color .2s;min-width:0;
+}
+#pw:focus{border-color:var(--amber)}
+#pw.err{border-color:var(--red);animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+#go{
+  background:var(--amber);color:#1a1407;border:none;border-radius:12px;padding:0 22px;
+  font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:15px;cursor:pointer;
+}
+#go:active{transform:scale(.96)}
+
+/* ---------- HEADER ---------- */
+header{margin:18px 0 34px}
+.kicker{
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber);
+  display:flex;align-items:center;gap:10px;margin-bottom:10px;
+}
+.kicker::after{content:"";flex:1;height:1px;background:var(--panel-edge)}
+header h1{
+  font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
+  font-size:clamp(30px,9vw,44px);letter-spacing:-.03em;line-height:1.02;
+}
+header p{color:var(--ink-dim);font-size:14px;margin-top:12px;max-width:46ch}
+header p b{color:var(--ink);font-weight:600}
+
+/* ---------- TRACK CARD ---------- */
+.track{
+  background:linear-gradient(180deg,#1a1712 0%,var(--panel) 100%);
+  border:1px solid var(--panel-edge);border-radius:var(--radius);
+  padding:22px 20px 24px;margin-bottom:26px;
+  box-shadow:0 18px 40px -22px rgba(0,0,0,.9);
+}
+.track-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:18px}
+.track-head h2{
+  font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+  font-size:clamp(20px,5.4vw,26px);letter-spacing:-.02em;
+}
+.track-no{
+  font-family:'Bricolage Grotesque',sans-serif;font-weight:300;font-size:26px;
+  color:var(--ink-dim);
+}
+
+/* switch A/B */
+.ab{
+  position:relative;display:grid;grid-template-columns:1fr 1fr;
+  background:#0e0d0a;border:1px solid var(--panel-edge);border-radius:14px;
+  padding:5px;margin-bottom:20px;
+}
+.ab-thumb{
+  position:absolute;top:5px;bottom:5px;left:5px;width:calc(50% - 5px);
+  border-radius:10px;background:var(--amber-soft);
+  border:1px solid var(--amber);
+  transition:transform .25s cubic-bezier(.4,0,.2,1), background .25s, border-color .25s;
+}
+.ab.is-b .ab-thumb{transform:translateX(100%);background:var(--red-soft);border-color:var(--red)}
+.ab button{
+  position:relative;z-index:1;background:none;border:none;cursor:pointer;
+  padding:13px 6px;color:var(--ink-dim);font-family:inherit;
+  transition:color .25s;
+}
+.ab button .tag{
+  display:block;font-size:10px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:3px;
+}
+.ab button .name{
+  display:block;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;
+}
+.ab button.on{color:var(--ink)}
+.ab:not(.is-b) button:first-child .tag{color:var(--amber)}
+.ab.is-b button:last-child .tag{color:var(--red)}
+
+/* transporte */
+.transport{display:flex;align-items:center;gap:16px}
+.play{
+  flex-shrink:0;width:58px;height:58px;border-radius:50%;border:none;cursor:pointer;
+  background:var(--ink);color:#14110b;display:flex;align-items:center;justify-content:center;
+  transition:transform .15s;
+}
+.play:active{transform:scale(.92)}
+.play svg{width:22px;height:22px;fill:currentColor}
+.play .ic-pause{display:none}
+.play.playing .ic-play{display:none}
+.play.playing .ic-pause{display:block}
+.timeline{flex:1;min-width:0}
+.seek{
+  -webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;cursor:pointer;display:block;
+}
+.seek::-webkit-slider-runnable-track{
+  height:6px;border-radius:3px;
+  background:linear-gradient(to right,var(--ac,#f5a623) 0%,var(--ac,#f5a623) var(--p,0%),#2a261d var(--p,0%));
+}
+.seek::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--ink);
+  margin-top:-5px;box-shadow:0 1px 6px rgba(0,0,0,.6);
+}
+.seek::-moz-range-track{height:6px;border-radius:3px;background:#2a261d}
+.seek::-moz-range-progress{height:6px;border-radius:3px;background:var(--ac,#f5a623)}
+.seek::-moz-range-thumb{width:16px;height:16px;border:none;border-radius:50%;background:var(--ink)}
+.times{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-dim);margin-top:4px;font-variant-numeric:tabular-nums}
+.ver-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;margin-top:14px;color:var(--ink-dim)}
+.ver-label b{color:var(--ac,#f5a623);font-weight:600}
+
+.hint{color:var(--ink-dim);font-size:13px;text-align:center;margin-top:34px;line-height:1.6}
+.hidden{display:none}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-card">
+    <div class="dot"></div>
+    <h1>Sala de escuta</h1>
+    <p>Digite a senha pra entrar.</p>
+    <div class="gate-row">
+      <input id="pw" type="password" placeholder="senha" autocomplete="off" autocapitalize="none">
+      <button id="go">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap hidden" id="app">
+  <header>
+    <div class="kicker">Sala de escuta &middot; A/B</div>
+    <h1>Oito faixas,<br>duas versões.</h1>
+    <p>Aperte o play e alterne entre <b>Versão Julio</b> e <b>Versão Remix</b> sem perder o ponto da música — a troca mantém a posição pra você comparar o mix no mesmo trecho.</p>
+  </header>
+
+  <div id="tracks"></div>
+
+  <p class="hint">Dica: deixe tocando e vá apertando A/B no mesmo trecho —<br>é o jeito mais rápido de ouvir a diferença do mix.</p>
+</div>
+
+<script>
+/* ---------- faixas ---------- */
+const TRACKS = [
+  { title:'Borrowed Flame',               slug:'borrowed'   },
+  { title:'Hold My Hand',                 slug:'hold'       },
+  { title:'Se Liga Mulek',                slug:'seliga'     },
+  { title:'Surrender',                    slug:'surrender'  },
+  { title:'The Chosen Burden',            slug:'burden'     },
+  { title:'The Island of Ash and Bones',  slug:'island'     },
+  { title:'The Last Chance',              slug:'lastchance' },
+  { title:'Weird Imagination',            slug:'weird'      },
+];
+
+/* ---------- gate ---------- */
+const HASH = '12fe0931825343df16a61f121ab5f9907c4d91620594d1d90bc7dfa817a3ccd3';
+async function sha256(s){
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+const gate = document.getElementById('gate'),
+      app  = document.getElementById('app'),
+      pw   = document.getElementById('pw'),
+      go   = document.getElementById('go');
+function unlock(){
+  gate.remove(); app.classList.remove('hidden');
+  sessionStorage.setItem('ab_ok','1');
+  initPlayers();
+}
+async function tryPw(){
+  const h = await sha256(pw.value.trim().toLowerCase());
+  if(h===HASH){ unlock(); }
+  else{ pw.value=''; pw.classList.add('err'); setTimeout(()=>pw.classList.remove('err'),400); }
+}
+go.addEventListener('click', tryPw);
+pw.addEventListener('keydown', e=>{ if(e.key==='Enter') tryPw(); });
+
+/* ---------- players ---------- */
+const players = [];
+function fmt(t){
+  if(!isFinite(t)) return '–:––';
+  const m = Math.floor(t/60), s = Math.floor(t%60);
+  return m + ':' + String(s).padStart(2,'0');
+}
+function buildCard(track, i){
+  const el = document.createElement('section');
+  el.className = 'track';
+  el.innerHTML = `
+    <div class="track-head"><h2></h2><span class="track-no">${String(i+1).padStart(2,'0')}</span></div>
+    <div class="ab">
+      <div class="ab-thumb"></div>
+      <button class="on" data-v="a"><span class="tag">A</span><span class="name">Versão Julio</span></button>
+      <button data-v="b"><span class="tag">B</span><span class="name">Versão Remix</span></button>
+    </div>
+    <div class="transport">
+      <button class="play" aria-label="Tocar/pausar">
+        <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        <svg class="ic-pause" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+      </button>
+      <div class="timeline">
+        <input class="seek" type="range" min="0" max="1000" value="0">
+        <div class="times"><span class="t-cur">0:00</span><span class="t-dur">–:––</span></div>
+      </div>
+    </div>
+    <div class="ver-label">Tocando agora: <b class="now">Versão Julio</b></div>`;
+  el.querySelector('h2').textContent = track.title;
+  return el;
+}
+function initPlayers(){
+  const host = document.getElementById('tracks');
+  TRACKS.forEach((track, i)=>{
+    const card = buildCard(track, i);
+    host.appendChild(card);
+    const audios = {
+      a: new Audio(track.slug + '-julio.mp3'),
+      b: new Audio(track.slug + '-remix.m4a')
+    };
+    audios.a.preload = 'metadata'; audios.b.preload = 'metadata';
+    const ab     = card.querySelector('.ab'),
+          btns   = card.querySelectorAll('.ab button'),
+          play   = card.querySelector('.play'),
+          seek   = card.querySelector('.seek'),
+          tCur   = card.querySelector('.t-cur'),
+          tDur   = card.querySelector('.t-dur'),
+          now    = card.querySelector('.now'),
+          tl     = card.querySelector('.timeline');
+    let cur = 'a', scrubbing = false;
+    const P = { pause };
+    players.push(P);
+
+    function active(){ return audios[cur]; }
+    function pause(){
+      active().pause();
+      play.classList.remove('playing');
+    }
+    function playNow(){
+      players.forEach(p=>{ if(p!==P) p.pause(); });
+      active().play();
+      play.classList.add('playing');
+    }
+    function setAccent(){
+      const c = cur==='a' ? '#f5a623' : '#e8543f';
+      tl.style.setProperty('--ac', c);
+      card.querySelector('.ver-label b').style.color = c;
+    }
+    function seekSafe(a, t){
+      if(a.readyState > 0){ a.currentTime = t; }
+      else{
+        a.addEventListener('loadedmetadata', ()=>{ a.currentTime = Math.min(t, a.duration||t); }, { once:true });
+      }
+    }
+    function switchTo(v){
+      if(v===cur) return;
+      const from = audios[cur], to = audios[v];
+      const wasPlaying = !from.paused;
+      const t = from.currentTime;
+      from.pause();
+      cur = v;
+      seekSafe(to, isFinite(to.duration) ? Math.min(t, to.duration) : t);
+      ab.classList.toggle('is-b', v==='b');
+      btns.forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+      now.textContent = v==='a' ? 'Versão Julio' : 'Versão Remix';
+      setAccent(); refresh();
+      if(wasPlaying){ to.play(); play.classList.add('playing'); }
+    }
+    function refresh(){
+      const a = active();
+      tDur.textContent = fmt(a.duration);
+      if(!scrubbing){
+        tCur.textContent = fmt(a.currentTime);
+        const p = a.duration ? (a.currentTime/a.duration) : 0;
+        seek.value = Math.round(p*1000);
+        seek.style.setProperty('--p', (p*100)+'%');
+      }
+    }
+    btns.forEach(b=>b.addEventListener('click', ()=>switchTo(b.dataset.v)));
+    play.addEventListener('click', ()=>{ active().paused ? playNow() : pause(); });
+    ['input','change'].forEach(ev=>seek.addEventListener(ev, (e)=>{
+      const a = active();
+      if(!isFinite(a.duration)) return;
+      const t = (seek.value/1000)*a.duration;
+      tCur.textContent = fmt(t);
+      seek.style.setProperty('--p', (seek.value/10)+'%');
+      if(e.type==='change'){ a.currentTime = t; }
+    }));
+    seek.addEventListener('pointerdown', ()=>scrubbing=true);
+    seek.addEventListener('pointerup',   ()=>{ scrubbing=false; });
+    Object.values(audios).forEach(a=>{
+      a.addEventListener('timeupdate', refresh);
+      a.addEventListener('loadedmetadata', refresh);
+      a.addEventListener('ended', ()=>play.classList.remove('playing'));
+    });
+    setAccent();
+  });
+}
+
+/* sessão já desbloqueada? (depois de tudo declarado — ver bug TDZ) */
+if(sessionStorage.getItem('ab_ok')==='1') unlock(); else pw.focus();
+</script>
+</body>
+</html>
