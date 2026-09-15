@@ -1,28 +1,18 @@
-const EXPIRES_AT = '2026-05-28T21:27:28Z';
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Tool-Key',
+  'Access-Control-Allow-Headers': 'Content-Type',
   'Cache-Control': 'no-store'
 };
 
 export async function onRequest(context) {
-  const { request, env } = context;
+  const { request } = context;
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
   if (request.method !== 'GET') {
     return new Response('method not allowed', { status: 405, headers: corsHeaders });
   }
-  if (Date.now() > Date.parse(EXPIRES_AT)) {
-    return new Response('expired', { status: 410, headers: corsHeaders });
-  }
-  const suppliedKey = request.headers.get('X-Tool-Key') || '';
-  if (!env.ACERVO_TOOL_PASSWORD || suppliedKey !== env.ACERVO_TOOL_PASSWORD) {
-    return new Response('forbidden', { status: 403, headers: corsHeaders });
-  }
-
   const url = new URL(request.url);
   const source = url.searchParams.get('source');
   const query = (url.searchParams.get('q') || '').trim();

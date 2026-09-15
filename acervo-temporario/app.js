@@ -25,7 +25,6 @@ const uploadInput = document.querySelector('#upload-csv');
 const uploadButton = document.querySelector('#upload-button');
 const uploadStatus = document.querySelector('#upload-status');
 
-const EXPIRES_AT = new Date('2026-06-28T23:59:59Z');
 let stopped = false;
 let lastRunRows = [];
 let lastRunKeyword = '';
@@ -168,15 +167,12 @@ function updateOverall() {
 
 // === HTTP via proxy ===
 
-async function proxyFetch(params, password) {
+async function proxyFetch(params) {
   const url = new URL('/api/acervo-proxy', window.location.origin);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, value);
   });
-  const response = await fetch(url.toString(), {
-    headers: { 'X-Tool-Key': password },
-    cache: 'no-store'
-  });
+  const response = await fetch(url.toString(), { cache: 'no-store' });
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`${response.status} ${text || response.statusText}`);
@@ -184,15 +180,12 @@ async function proxyFetch(params, password) {
   return response.text();
 }
 
-async function proxyFetchBlob(params, password) {
+async function proxyFetchBlob(params) {
   const url = new URL('/api/acervo-proxy', window.location.origin);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, value);
   });
-  const response = await fetch(url.toString(), {
-    headers: { 'X-Tool-Key': password },
-    cache: 'no-store'
-  });
+  const response = await fetch(url.toString(), { cache: 'no-store' });
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`${response.status} ${text || response.statusText}`);
@@ -317,7 +310,7 @@ async function scrapeFolha(options, rows, seen) {
     page: 1,
     startDate: toBRDate(options.startDate),
     endDate: toBRDate(options.endDate)
-  }, options.password);
+  });
   const first = parseFolhaItems(firstHtml, 1);
   const total = parseFolhaTotal(first.doc);
   const totalPages = Math.min(Math.ceil(total / 20) || 1, options.maxPages);
@@ -338,7 +331,7 @@ async function scrapeFolha(options, rows, seen) {
       page,
       startDate: toBRDate(options.startDate),
       endDate: toBRDate(options.endDate)
-    }, options.password);
+    });
     addRows(parseFolhaItems(html, page).rows, rows, seen, 'folha');
     updateTask('folha', { done: page, detail: `${total} resultados — página ${page}/${totalPages}` });
   }
@@ -366,7 +359,7 @@ async function scrapeEstadao(options, rows, seen) {
       q: options.keyword,
       page: 1,
       ...chunk
-    }, options.password);
+    });
     const first = parseEstadaoItems(firstHtml, 1, options.startDate, options.endDate);
     const total = parseEstadaoTotal(first.doc);
     if (total > 0) {
@@ -385,7 +378,7 @@ async function scrapeEstadao(options, rows, seen) {
         q: options.keyword,
         page,
         ...chunk
-      }, options.password);
+      });
       addRows(parseEstadaoItems(html, page, options.startDate, options.endDate).rows, rows, seen, 'estadao');
       updateTask('estadao', { detail: `Etapa 1/2 — ${label}, página ${page}/${totalPages} (mês ${chunkIndex}/${chunks.length})` });
     }
@@ -428,7 +421,7 @@ async function enrichEstadaoHighRes(rows, options, chunksCount, estadaoCount) {
     if (stopped) break;
     idx += 1;
     try {
-      const body = await proxyFetch({ source: 'estadao_meta', file: fileId }, options.password);
+      const body = await proxyFetch({ source: 'estadao_meta', file: fileId });
       const json = JSON.parse(body.replace(/^﻿/, ''));
       byFile.set(fileId, {
         page_image_url_high_res: json.imagem_reader || '',
@@ -466,6 +459,11 @@ function addRows(newRows, rowsArr, seen, source) {
     rowsArr.push({ result_index: rowsArr.length + 1, ...row });
   }
   countEl.textContent = `${rowsArr.length} linhas`;
+  if (newRows.length) {
+    const latest = newRows[newRows.length - 1];
+    const where = latest.date ? ` — último registro: ${latest.date}` : '';
+    statusDetail.textContent = `${rowsArr.length} resultado(s) encontrado(s) até agora em ${source === 'folha' ? 'Folha' : 'Estadão'}${where}. A busca continua no painel abaixo.`;
+  }
 }
 
 // === CSVs ===
@@ -569,7 +567,6 @@ function updateBatchHint() {
 
 async function downloadNextBatch() {
   const source = downloadSourceSel.value;
-  const password = document.querySelector('#password').value;
   const list = source === 'folha'
     ? imagesAvailable(lastRunRows).folha
     : imagesAvailable(lastRunRows).estadao;
@@ -599,7 +596,7 @@ async function downloadNextBatch() {
     let lastErr = '';
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       try {
-        const blob = await proxyFetchBlob({ source: 'image_proxy', url }, password);
+        const blob = await proxyFetchBlob({ source: 'image_proxy', url });
         const buf = await blob.arrayBuffer();
         zip.file(filename, buf);
         success = true;
@@ -639,10 +636,6 @@ async function downloadNextBatch() {
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (Date.now() > EXPIRES_AT.getTime()) {
-    setStatus('Expirado', 'Esta ferramenta temporária venceu.');
-    return;
-  }
   stopped = false;
   logEl.textContent = '';
   countEl.textContent = '0 linhas';
@@ -652,16 +645,14 @@ form.addEventListener('submit', async (event) => {
   batchCursor.folha = 0;
   batchCursor.estadao = 0;
   const options = {
-    password: document.querySelector('#password').value,
     keyword: document.querySelector('#keyword').value.trim(),
     source: document.querySelector('#source').value,
     startDate: document.querySelector('#start-date').value,
     endDate: document.querySelector('#end-date').value,
-    delay: Number(document.querySelector('#delay').value || 650),
+    delay: Number(document.querySelector('#delay').value || 350),
     maxPages: Number(document.querySelector('#max-pages').value || 3000),
     highRes: document.querySelector('#high-res').checked
   };
-  sessionStorage.setItem('acervo-tool-key', options.password);
   runButton.disabled = true;
   stopButton.disabled = false;
   const rowsArr = [];
@@ -678,12 +669,10 @@ form.addEventListener('submit', async (event) => {
 
   try {
     setStatus('Rodando', 'Coletando metadados. Mantenha a aba aberta.');
-    if (options.source === 'folha' || options.source === 'both') {
-      await scrapeFolha(options, rowsArr, seen);
-    }
-    if (!stopped && (options.source === 'estadao' || options.source === 'both')) {
-      await scrapeEstadao(options, rowsArr, seen);
-    }
+    const jobs = [];
+    if (options.source === 'folha' || options.source === 'both') jobs.push(scrapeFolha(options, rowsArr, seen));
+    if (options.source === 'estadao' || options.source === 'both') jobs.push(scrapeEstadao(options, rowsArr, seen));
+    await Promise.all(jobs);
     if (rowsArr.length) {
       const counts = await downloadCsvs(rowsArr, options.keyword);
       const detail = [
@@ -741,9 +730,6 @@ rescueEstadao.addEventListener('click', () => {
   }
 });
 
-const savedKey = sessionStorage.getItem('acervo-tool-key');
-if (savedKey) document.querySelector('#password').value = savedKey;
-
 // === Upload de planilha pronta ===
 
 function parseCsv(text) {
@@ -790,9 +776,6 @@ function rowsFromCsvText(text) {
 async function handleUpload() {
   const file = uploadInput.files && uploadInput.files[0];
   if (!file) { uploadStatus.textContent = 'Selecione um arquivo CSV primeiro.'; return; }
-  const password = document.querySelector('#password').value;
-  if (!password) { uploadStatus.textContent = 'Preencha a senha no topo da página antes de baixar as imagens.'; return; }
-
   uploadStatus.textContent = 'Lendo planilha…';
   const text = await file.text();
   const { header, rows } = rowsFromCsvText(text);
