@@ -642,6 +642,7 @@ form.addEventListener('submit', async (event) => {
   resetTasks();
   downloadPanel.hidden = true;
   csvRescuePanel.hidden = true;
+  document.querySelector('#ocr-panel').hidden = true;
   batchCursor.folha = 0;
   batchCursor.estadao = 0;
   const options = {
@@ -683,6 +684,7 @@ form.addEventListener('submit', async (event) => {
       log(`CSV(s) gerado(s): ${detail}`);
       refreshCsvRescue(counts);
       refreshDownloadPanel();
+      refreshOcrPanel(rowsArr, options.keyword);
     } else {
       setStatus('Sem resultados', 'Nenhuma linha foi coletada.');
     }
@@ -806,9 +808,10 @@ async function handleUpload() {
   batchCursor.estadao = 0;
   countEl.textContent = `${rows.length} linhas`;
   refreshDownloadPanel();
+  refreshOcrPanel(rows, lastRunKeyword);
   const partes = [folha ? `Folha: ${folha}` : null, estadao ? `Estadão: ${estadao}` : null].filter(Boolean).join(' · ');
-  setStatus('Planilha carregada', `${rows.length} linhas — siga pro painel de download em lotes abaixo.`);
-  uploadStatus.textContent = `Carregado: ${partes}. O painel de download apareceu acima.`;
+  setStatus('Planilha carregada', `${rows.length} linhas — escolha baixar imagens ou pesquisar o texto das páginas.`);
+  uploadStatus.textContent = `Carregado: ${partes}. Os painéis de download e OCR apareceram acima.`;
   log(`Planilha "${file.name}" carregada — ${partes}`);
   const panel = document.querySelector('#download-panel');
   if (panel && !panel.hidden) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });

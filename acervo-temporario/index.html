@@ -15,7 +15,7 @@
     <header>
       <p class="eyebrow">Data Fixers · ferramenta temporária</p>
       <h1>Busca em acervos</h1>
-      <p class="lede">Coleta metadados públicos de resultados da Folha e do Estadão, baixa um CSV por fonte e (opcional) empacota as imagens em lotes ZIP.</p>
+      <p class="lede">Busca páginas da Folha e do Estadão, baixa um CSV por fonte e permite preparar páginas selecionadas para pesquisa no NotebookLM.</p>
     </header>
 
     <section class="panel">
@@ -136,11 +136,35 @@
       </p>
     </section>
 
+    <section id="ocr-panel" class="panel" hidden>
+      <h2 class="panel-title">Pesquisar o conteúdo das páginas</h2>
+      <p class="panel-sub">Selecione até 10 páginas. O OCR roda neste navegador, sem custo por página ou tokens de IA. Ao terminar, você recebe um PDF com a imagem, o texto extraído e o link para conferir a página no acervo. O texto pode ter erros.</p>
+      <div class="grid grid-3">
+        <label>
+          Termo a verificar no texto
+          <input id="ocr-term" type="text" placeholder="Mackenzie">
+        </label>
+      </div>
+      <p id="ocr-selection-count" class="panel-sub" aria-live="polite">Nenhuma página selecionada.</p>
+      <div id="ocr-results" class="ocr-results"></div>
+      <div class="actions">
+        <button id="ocr-more" type="button" class="secondary" hidden>Mostrar mais páginas</button>
+        <button id="ocr-run" type="button" disabled>Fazer OCR e gerar PDF</button>
+        <button id="ocr-stop" type="button" class="secondary" disabled>Parar depois desta página</button>
+      </div>
+      <p id="ocr-status" class="panel-sub" role="status" aria-live="polite"></p>
+      <div id="ocr-findings" class="ocr-findings" aria-live="polite"></div>
+      <div id="notebooklm-next" hidden>
+        <p class="panel-sub">PDF pronto. Adicione-o como fonte no seu caderno; o NotebookLM poderá pesquisar o texto OCR e citar as páginas do arquivo.</p>
+        <a class="notebook-link" href="https://notebooklm.google.com/" target="_blank" rel="noopener noreferrer">Abrir NotebookLM para adicionar o PDF</a>
+      </div>
+    </section>
+
     <section id="upload-panel" class="panel">
-      <h2 class="panel-title">Já tem a planilha? Suba ela aqui pra baixar as imagens</h2>
+      <h2 class="panel-title">Já tem a planilha? Suba ela aqui para baixar imagens ou fazer OCR</h2>
       <p class="panel-sub">
         Se você já rodou a busca antes e salvou o CSV (da Folha ou do Estadão), pode pular a busca
-        e mandar a planilha aqui pra baixar as imagens em lotes ZIP. A planilha precisa ser a que
+        e mandar a planilha aqui para baixar as imagens em lotes ZIP ou selecionar páginas para OCR. A planilha precisa ser a que
         esta ferramenta gera — ela usa as colunas <code>full_jpg_url</code> (Folha) e
         <code>page_image_url_high_res</code> (Estadão) pra descobrir as URLs das páginas.
         O download usa o mesmo proxy público da ferramenta; não é preciso digitar senha.
@@ -164,6 +188,7 @@
   </main>
 
   <script src="./jszip.min.js"></script>
-  <script src="./app.js?v=20260915"></script>
+  <script src="./app.js?v=20260915-ocr1"></script>
+  <script src="./ocr.js?v=20260915-ocr1"></script>
 </body>
 </html>
