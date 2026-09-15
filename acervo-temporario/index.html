@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=20260915">
+  <link rel="stylesheet" href="./styles.css?v=20260915-ocr2">
 </head>
 <body>
   <main class="shell">
@@ -152,6 +152,18 @@
         <button id="ocr-run" type="button" disabled>Fazer OCR e gerar PDF</button>
         <button id="ocr-stop" type="button" class="secondary" disabled>Parar depois desta página</button>
       </div>
+      <div class="ocr-bulk">
+        <h3>Baixar todas as páginas encontradas em PDFs</h3>
+        <p class="panel-sub">Um PDF por lote de até 10 páginas, com imagem, OCR e link da fonte. Clique no botão novamente para baixar o lote seguinte. Se interromper ou fechar a aba, carregue o CSV e informe a página de retomada. Mantenha a aba aberta durante cada lote.</p>
+        <div class="grid grid-3">
+          <label>
+            Começar na página da lista
+            <input id="ocr-bulk-start" type="number" min="1" step="1" value="1">
+          </label>
+        </div>
+        <p id="ocr-bulk-hint" class="panel-sub" aria-live="polite"></p>
+        <button id="ocr-bulk-run" type="button" class="secondary" disabled>Baixar próximo PDF</button>
+      </div>
       <p id="ocr-status" class="panel-sub" role="status" aria-live="polite"></p>
       <div id="ocr-findings" class="ocr-findings" aria-live="polite"></div>
       <div id="notebooklm-next" hidden>
@@ -189,6 +201,6 @@
 
   <script src="./jszip.min.js"></script>
   <script src="./app.js?v=20260915-ocr1"></script>
-  <script src="./ocr.js?v=20260915-ocr1"></script>
+  <script src="./ocr.js?v=20260915-ocr2"></script>
 </body>
 </html>

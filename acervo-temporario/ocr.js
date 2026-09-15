@@ -8,6 +8,9 @@ const ocrTermEl = document.querySelector('#ocr-term');
 const ocrMoreButton = document.querySelector('#ocr-more');
 const ocrRunButton = document.querySelector('#ocr-run');
 const ocrStopButton = document.querySelector('#ocr-stop');
+const ocrBulkStartEl = document.querySelector('#ocr-bulk-start');
+const ocrBulkHintEl = document.querySelector('#ocr-bulk-hint');
+const ocrBulkButton = document.querySelector('#ocr-bulk-run');
 const notebookNextEl = document.querySelector('#notebooklm-next');
 
 const OCR_MAX_PAGES = 10;
@@ -49,6 +52,8 @@ function refreshOcrPanel(rows, keyword) {
   ocrStatusEl.textContent = '';
   notebookNextEl.hidden = true;
   ocrTermEl.value = keyword || '';
+  ocrBulkStartEl.value = 1;
+  ocrBulkStartEl.max = Math.max(1, ocrPages.length);
   ocrPanel.hidden = ocrPages.length === 0;
   if (!ocrPanel.hidden) renderMoreOcrPages();
   updateOcrSelection();
@@ -59,6 +64,15 @@ function updateOcrSelection() {
   ocrSelectionEl.textContent = `${count} de ${OCR_MAX_PAGES} páginas selecionadas · ${ocrPages.length} páginas únicas disponíveis.`;
   ocrRunButton.disabled = ocrRunning || count === 0;
   ocrRunButton.textContent = count ? `Fazer OCR de ${count} página(s) e gerar PDF` : 'Fazer OCR e gerar PDF';
+  const rawStart = Number(ocrBulkStartEl.value);
+  const validStart = Number.isInteger(rawStart) && rawStart >= 1 && rawStart <= ocrPages.length;
+  const end = Math.min(ocrPages.length, rawStart + OCR_MAX_PAGES - 1);
+  ocrBulkButton.disabled = ocrRunning || !validStart;
+  ocrBulkHintEl.textContent = rawStart === ocrPages.length + 1
+    ? `Fim da lista de ${ocrPages.length} páginas. Para recomeçar, informe 1.`
+    : validStart
+    ? `Próximo PDF: páginas ${rawStart} a ${end} de ${ocrPages.length}. Total aproximado: ${Math.ceil(ocrPages.length / OCR_MAX_PAGES)} PDF(s) se começar na página 1.`
+    : `Informe uma página entre 1 e ${ocrPages.length}.`;
 }
 
 function renderMoreOcrPages() {
@@ -222,17 +236,23 @@ function pdfOcrPages(pdf, row, text, term, match) {
   }
 }
 
-async function runOcrPdf() {
-  if (ocrRunning || !ocrSelected.size) return;
+async function runOcrPdf(bulk = false) {
+  const bulkStart = Number(ocrBulkStartEl.value);
+  if (ocrRunning || (bulk
+    ? !Number.isInteger(bulkStart) || bulkStart < 1 || bulkStart > ocrPages.length
+    : !ocrSelected.size)) return;
   ocrRunning = true;
   ocrStopRequested = false;
   ocrRunButton.disabled = true;
   ocrStopButton.disabled = false;
   ocrMoreButton.disabled = true;
+  ocrBulkButton.disabled = true;
+  ocrBulkStartEl.disabled = true;
   ocrResultsEl.querySelectorAll('input').forEach(input => { input.disabled = true; });
   ocrFindingsEl.replaceChildren();
   notebookNextEl.hidden = true;
-  const rows = [...ocrSelected.values()];
+  const bulkEnd = Math.min(ocrPages.length, bulkStart + OCR_MAX_PAGES - 1);
+  const rows = bulk ? ocrPages.slice(bulkStart - 1, bulkEnd) : [...ocrSelected.values()];
   const term = ocrTermEl.value.trim();
   let worker;
   try {
@@ -275,10 +295,13 @@ async function runOcrPdf() {
     }
     if (!completed) throw new Error('Nenhuma página foi processada. Confira os erros acima e tente novamente.');
     pdf.deletePage(1);
-    const filename = `acervo-ocr-${safeName(lastRunKeyword || term) || 'paginas'}-${new Date().toISOString().slice(0, 10)}.pdf`;
+    const suffix = bulk ? `-paginas-${bulkStart}-a-${bulkStart + rows.length - 1}` : '';
+    const filename = `acervo-ocr-${safeName(lastRunKeyword || term) || 'paginas'}-${new Date().toISOString().slice(0, 10)}${suffix}.pdf`;
     downloadBlob(pdf.output('blob'), filename);
     notebookNextEl.hidden = false;
-    ocrStatusEl.textContent = `PDF gerado: ${completed} página(s) com imagem e transcrição. ${failures ? `${failures} falha(s).` : ''} ${ocrStopRequested ? 'Processamento interrompido após a última página concluída.' : ''}`;
+    const completeBatch = bulk && completed === rows.length && !failures && !ocrStopRequested;
+    if (completeBatch) ocrBulkStartEl.value = bulkEnd + 1;
+    ocrStatusEl.textContent = `PDF gerado: ${completed} página(s) com imagem e transcrição. ${failures ? `${failures} falha(s).` : ''} ${ocrStopRequested ? 'Processamento interrompido após a última página concluída.' : ''} ${bulk && !completeBatch ? 'A posição de retomada não mudou; confira as falhas antes de repetir.' : ''}`;
     log(`PDF OCR gerado: ${filename} (${completed} páginas, ${failures} falhas)`);
   } catch (error) {
     console.error(error);
@@ -289,13 +312,16 @@ async function runOcrPdf() {
     ocrRunning = false;
     ocrStopButton.disabled = true;
     ocrMoreButton.disabled = false;
+    ocrBulkStartEl.disabled = false;
     ocrResultsEl.querySelectorAll('input').forEach(input => { input.disabled = false; });
     updateOcrSelection();
   }
 }
 
 ocrMoreButton.addEventListener('click', renderMoreOcrPages);
-ocrRunButton.addEventListener('click', runOcrPdf);
+ocrRunButton.addEventListener('click', () => runOcrPdf(false));
+ocrBulkButton.addEventListener('click', () => runOcrPdf(true));
+ocrBulkStartEl.addEventListener('input', updateOcrSelection);
 ocrStopButton.addEventListener('click', () => {
   ocrStopRequested = true;
   ocrStopButton.disabled = true;

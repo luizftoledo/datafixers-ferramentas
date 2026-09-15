@@ -219,6 +219,18 @@ h1 {
 
 #notebooklm-next .panel-sub { margin-bottom: 8px; }
 
+.ocr-bulk {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-elevated);
+}
+
+.ocr-bulk h3 { margin: 0 0 8px; font-size: 17px; }
+.ocr-bulk .panel-sub { margin: 0 0 12px; }
+.ocr-bulk .grid { margin-bottom: 10px; }
+
 /* ─── Form ─────────────────────────────────────── */
 
 .grid {
