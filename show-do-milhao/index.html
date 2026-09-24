@@ -94,7 +94,7 @@
       { image: 'img/p2_cidade.jpg', alt: 'Pergunta 2: Qual é a sua cidade?', correct: 'A' },
       { image: 'img/p3_pai.jpg', alt: 'Pergunta final: Qual apelido do seu pai? Valendo o presente de aniversário.', correct: 'C' }
     ];
-    const IMAGES = ['img/inicio.jpg', ...QUESTIONS.map(q => q.image), 'img/vitoria1_silvio.jpg', 'img/vitoria2_oscar.jpg', 'img/errou.jpg'];
+    const IMAGES = ['img/inicio.jpg', ...QUESTIONS.map(q => q.image), 'img/acertou.jpg', 'img/vitoria1_silvio.jpg', 'img/vitoria2_oscar.jpg', 'img/errou.jpg'];
     const AUDIO_FILES = {
       background: 'audio/fundo.mp3', victory: 'audio/vitoria.mp3',
       ask: 'audio/posso-perguntar.mp3', sure: 'audio/esta-certo-disso.mp3',
@@ -110,6 +110,30 @@
     media.background.loop = true;
     media.background.volume = .25;
     media.victory.volume = 0;
+
+    // iPhone/iPad ignoram audio.volume: música de fundo e de vitória passam por um GainNode (Web Audio).
+    const nativeVolume = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'volume');
+    const gainRouted = [media.background, media.victory].map(audio => {
+      let level = audio.volume, gain = null;
+      Object.defineProperty(audio, 'volume', {
+        configurable: true,
+        get: () => level,
+        set: value => { level = Math.max(0, Math.min(1, value)); if (gain) gain.gain.value = level; else nativeVolume.set.call(audio, level); }
+      });
+      return { audio, attach(ctx) { gain = ctx.createGain(); gain.gain.value = level; nativeVolume.set.call(audio, 1); ctx.createMediaElementSource(audio).connect(gain).connect(ctx.destination); } };
+    });
+    let audioCtx = null;
+    function setupWebAudio() {
+      if (audioCtx || !location.protocol.startsWith('http')) return;
+      try {
+        if (navigator.audioSession) navigator.audioSession.type = 'playback';
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        audioCtx = new Ctx();
+        gainRouted.forEach(item => item.attach(audioCtx));
+        audioCtx.resume();
+      } catch (_) {}
+    }
 
     const stage = document.getElementById('stage');
     const scenes = [document.getElementById('scene-a'), document.getElementById('scene-b')];
@@ -292,7 +316,15 @@
         mode = 'correct';
         buttonFor(selected).classList.add('correct');
         speak('correct');
-        schedule(2000, () => questionIndex < QUESTIONS.length - 1 ? showQuestion(questionIndex + 1) : showVictory());
+        if (questionIndex < QUESTIONS.length - 1) {
+          schedule(1300, () => {
+            answers.hidden = true;
+            showImage('img/acertou.jpg', 'Acertou!');
+            schedule(3000, () => showQuestion(questionIndex + 1));
+          });
+        } else {
+          schedule(2000, showVictory);
+        }
       } else {
         mode = 'wrong';
         buttonFor(selected).classList.add('wrong');
@@ -392,6 +424,7 @@
     answerButtons.forEach(button => button.addEventListener('click', () => choose(button.dataset.letter)));
     document.getElementById('start-button').addEventListener('click', () => {
       if (mode !== 'intro') return;
+      setupWebAudio();
       beginBackground();
       unlockAudio();
       intro.hidden = true;
