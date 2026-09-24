@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rastreador de aeronaves · Data Fixers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="./styles.css"><script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" onerror="this.onerror=null;this.src='./jszip.min.js'"></script>
+<script type="module" src="./app.js"></script></head>
+<body><header><div class="wrap"><a class="back" href="/">← Ferramentas</a><div class="eyebrow">DATA FIXERS / FERRAMENTA</div><h1>Rastreador de aeronaves</h1><p>Consulte registros de aeronaves e reconstrua voos a partir de pontos públicos de recepção ADS-B.</p></div></header>
+<main class="wrap"><form id="search"><label>Prefixo ou hex ICAO <input id="query" placeholder="PP-NLR ou e48b2f" required spellcheck="false"></label><label>De <input id="from" type="date" required></label><label>Até <input id="to" type="date" required></label><button type="submit">Buscar voos</button><button id="cancel" type="button" hidden>Cancelar</button></form>
+<div id="status" role="status" aria-live="polite"></div><progress id="progress" max="1" value="0" hidden></progress><div id="errors" role="alert"></div>
+<section id="results" hidden><div class="topline"><h2 id="title"></h2><button id="download-all" type="button">Baixar pacote de evidência</button></div><p class="note">A relação entre hex e matrícula pode mudar após revenda ou novo registro. Confirme a matrícula na data investigada.</p>
+<section class="panel" id="owner"><h2>Registro e titularidade</h2><div id="owner-content"></div></section>
+<section class="panel"><h2>Resumo</h2><div id="summary"></div><div id="map" aria-label="Mapa dos voos"></div></section>
+<section class="panel"><h2>Voos detectados</h2><p class="note">Horários dos arquivos são UTC. Brasília: UTC−3, inclusive em 2025.</p><div id="flights"></div></section></section>
+<section class="panel"><h2>Método e limites</h2><ul><li>ADS-B identifica a aeronave, nunca quem estava a bordo.</li><li>A cobertura depende de receptores voluntários. Há lacunas no oceano, na Amazônia e no Centro-Oeste. Um transponder pode estar desligado.</li><li>LADD e PIA nos EUA podem ocultar jatos em serviços como FlightAware e Flightradar24; essas medidas não garantem ocultação nos arquivos usados aqui.</li><li>Hex, matrícula, operador e proprietário podem mudar. O RAB consultado mostra a situação atual, não a da data do voo. Solicite uma certidão histórica à ANAC.</li><li>O arquivo histórico é dividido por dia UTC. Extremos sem ponto em solo são inferências; confira o dado bruto e outras fontes antes de publicar.</li></ul></section>
+<section class="panel"><h2>Próximos passos de apuração</h2><ul><li>Peça via LAI ao DECEA os planos de voo e movimentos com data e hora.</li><li>Solicite à ANAC certidão histórica de propriedade e operação.</li><li>Consulte os CNPJs dos proprietários e operadores na Receita Federal.</li><li>Para aeronave com matrícula N, consulte o registro da FAA.</li><li>Cruze as datas com agendas oficiais.</li></ul></section></main>
+<footer class="wrap">Fontes: <a href="https://adsb.lol/">adsb.lol</a> (ODbL), <a href="https://globe.adsbexchange.com/">ADS-B Exchange</a>, <a href="https://sistemas.anac.gov.br/dadosabertos/Aeronaves/RAB/dados_aeronaves.csv">RAB/ANAC</a>, <a href="https://ourairports.com/data/">OurAirports</a>.</footer></body></html>
