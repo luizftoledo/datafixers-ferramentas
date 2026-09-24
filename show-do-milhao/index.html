@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#061027">
+  <title>Show do Milhão — Aniversário da Mariana</title>
+  <style>
+    :root { color-scheme: dark; --gold: #f5c518; --navy: #061027; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body { overflow: hidden; background: radial-gradient(circle at 50% 42%, #183e89 0%, #071a43 45%, var(--navy) 100%); font-family: "Arial Black", Arial, Helvetica, sans-serif; font-weight: 800; }
+    button { font: inherit; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    .app { position: fixed; inset: 0; display: grid; place-items: center; overflow: hidden; }
+    .stage { position: relative; width: min(100vw, calc(100vh * 1.4)); max-height: 100vh; aspect-ratio: 1484 / 1060; overflow: hidden; isolation: isolate; background: #081633; box-shadow: 0 0 55px #0009; }
+    @supports (height: 100dvh) { .stage { width: min(100vw, calc(100dvh * 1.4)); max-height: 100dvh; } }
+    .scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: fill; opacity: 0; transition: opacity 600ms ease; user-select: none; -webkit-user-drag: none; }
+    .scene.visible { opacity: 1; }
+    .start-hotspot { position: absolute; left: 3.4%; top: 73.1%; width: 93.7%; height: 18.9%; z-index: 3; border: 0; border-radius: 3vw; background: transparent; cursor: pointer; animation: startPulse 1.6s ease-in-out infinite; }
+    .start-hotspot:hover, .start-hotspot:focus-visible { outline: none; box-shadow: 0 0 0 3px #fff6, 0 0 40px #ffd54f; }
+    @keyframes startPulse { 0%,100% { box-shadow: 0 0 10px #ffd54f55; } 50% { box-shadow: 0 0 38px #ffd54fcc; } }
+    .answers { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+    .answer { position: absolute; left: 64.01617%; width: 35.37736%; height: 5.28302%; padding: 0; border: 2px solid transparent; border-radius: 8px; background: transparent; color: transparent; cursor: pointer; pointer-events: auto; transition: box-shadow .18s, background .18s, border-color .18s; }
+    .answer[data-letter="A"] { top: 38.58491%; }
+    .answer[data-letter="B"] { top: 44.90566%; }
+    .answer[data-letter="C"] { top: 51.41509%; }
+    .answer[data-letter="D"] { top: 57.73585%; }
+    .answer:hover, .answer:focus-visible { outline: none; border-color: #ffdf75; background: #ffcf3329; box-shadow: 0 0 17px #ffd44eaa, inset 0 0 12px #ffd44e77; }
+    .answer.selected { border-color: #ffce33; background: #ffb70078; box-shadow: 0 0 18px #ffae00c4, inset 0 0 14px #ffe06670; }
+    .answer.suspense { animation: blink-gold .35s linear infinite alternate; }
+    .answer.correct { animation: blink-green .42s linear infinite alternate; border-color: #52ff82; background: #19c85e96; }
+    .answer.wrong { border-color: #ff4a54; background: #ee253780; box-shadow: 0 0 18px #e62835bd; }
+    @keyframes blink-gold { from { background: #ffac0073; box-shadow: 0 0 5px #ffb900; } to { background: #ffdf30c9; box-shadow: 0 0 25px #ffe274, inset 0 0 20px #fff4ae; } }
+    @keyframes blink-green { from { background: #12a64f82; box-shadow: 0 0 6px #39ff77; } to { background: #28e66dcc; box-shadow: 0 0 24px #6dff92, inset 0 0 20px #d3ffdb; } }
+    .screen-overlay { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 16px; background: #0209184d; text-align: center; }
+    .screen-overlay[hidden], .answers[hidden], .dialog-wrap[hidden], .end-controls[hidden], .victory-message[hidden] { display: none; }
+    .intro-card { width: min(92vw, 600px); padding: clamp(22px, 5vw, 48px); border: 3px solid var(--gold); border-radius: 24px; background: linear-gradient(145deg, #173e91ee, #061438f5); box-shadow: 0 0 35px #f5c51864, inset 0 0 24px #347be866; }
+    .intro-card h1 { margin: 0 0 28px; font-size: clamp(2rem, 8vw, 4.8rem); line-height: 1.03; letter-spacing: .02em; color: var(--gold); text-shadow: 0 3px 0 #74420a, 0 0 25px #ffc6279c; }
+    .gold-button { min-height: 52px; padding: 12px 23px; border: 2px solid #ffe579; border-radius: 12px; background: linear-gradient(#ffde58, #db9a08); box-shadow: 0 5px 0 #885705, 0 0 20px #ffcf4570; color: #081944; cursor: pointer; font-size: clamp(.88rem, 2.5vw, 1.25rem); text-shadow: none; }
+    .gold-button:hover, .gold-button:focus-visible { outline: 3px solid #fff6; transform: translateY(-2px); filter: brightness(1.12); }
+    .gold-button:active { transform: translateY(3px); box-shadow: 0 2px 0 #885705; }
+    #start-button { padding: 16px 42px; font-size: clamp(1.2rem, 4vw, 1.8rem); }
+    .dialog-wrap { position: fixed; inset: 0; z-index: 6; display: grid; place-items: center start; padding: 14px 14px 14px calc((100vw - min(100vw, 140vh)) / 2 + 2%); background: #0209184d; }
+    .dialog-wrap .dialog { width: min(94vw, 540px, calc(min(100vw, 140vh) * 0.58)); }
+    @media (orientation: portrait) { .dialog-wrap { place-items: end center; padding: 14px 14px 6vh; } .dialog-wrap .dialog { width: min(94vw, 540px); } }
+    .dialog { width: min(94vw, 540px); padding: clamp(18px, 4vw, 34px); border: 3px solid var(--gold); border-radius: 20px; background: linear-gradient(145deg, #174da8, #071747); box-shadow: 0 0 45px #f5c5186e, inset 0 0 25px #357de477; text-align: center; }
+    .dialog h2 { margin: 0 0 24px; color: var(--gold); font-size: clamp(1.45rem, 5vw, 2.5rem); text-shadow: 0 3px 0 #74420a, 0 0 14px #ffce57; }
+    .dialog-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 15px; }
+    .no-button { min-height: 52px; padding: 11px 20px; border: 2px solid #75baff; border-radius: 12px; color: #fff; background: #123d83; cursor: pointer; font-size: clamp(.82rem, 2.2vw, 1rem); }
+    .no-button:hover, .no-button:focus-visible { outline: 2px solid #fff8; filter: brightness(1.2); }
+    .sound-button { position: fixed; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); z-index: 20; width: 46px; height: 46px; border: 1px solid #ffe376a6; border-radius: 50%; background: #071736d9; color: white; cursor: pointer; font-size: 24px; line-height: 1; box-shadow: 0 3px 14px #0008; }
+    .sound-button:hover, .sound-button:focus-visible { outline: 2px solid var(--gold); }
+    .end-controls { position: fixed; z-index: 8; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); text-align: center; white-space: nowrap; }
+    .end-controls .gold-button { font-size: clamp(.8rem, 2vw, 1rem); padding: 10px 18px; min-height: 42px; }
+    .victory-message { position: fixed; z-index: 7; top: max(14px, env(safe-area-inset-top)); left: 50%; width: min(88vw, 760px); transform: translateX(-50%); padding: 10px 18px; border: 2px solid #ffe37f; border-radius: 14px; background: #071638d9; color: var(--gold); text-align: center; font-size: clamp(.92rem, 3vw, 1.65rem); line-height: 1.2; text-shadow: 0 2px 0 #523410, 0 0 12px #ffd84e; box-shadow: 0 0 18px #f5c51870; pointer-events: none; }
+    #confetti { position: fixed; inset: 0; z-index: 4; width: 100%; height: 100%; pointer-events: none; }
+    .stage.victory { cursor: pointer; }
+    @media (prefers-reduced-motion: reduce) { .scene { transition-duration: 200ms; } .answer.suspense, .answer.correct { animation-duration: .8s; } }
+  </style>
+</head>
+<body>
+  <main class="app" aria-label="Jogo Show do Milhão">
+    <div class="stage intro" id="stage">
+      <img class="scene visible" id="scene-a" src="img/inicio.jpg" alt="Começar jogo do aniversário" draggable="false">
+      <button class="start-hotspot" id="start-button" type="button" aria-label="Começar jogo do aniversário"></button>
+      <img class="scene" id="scene-b" alt="" draggable="false">
+      <div class="answers" id="answers" hidden aria-label="Respostas">
+        <button class="answer" type="button" data-letter="A" aria-label="Resposta A"></button>
+        <button class="answer" type="button" data-letter="B" aria-label="Resposta B"></button>
+        <button class="answer" type="button" data-letter="C" aria-label="Resposta C"></button>
+        <button class="answer" type="button" data-letter="D" aria-label="Resposta D"></button>
+      </div>
+    </div>
+    <canvas id="confetti" aria-hidden="true"></canvas>
+    <div class="dialog-wrap" id="dialog-wrap" hidden>
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+        <h2 id="dialog-title">Está certo disso?</h2>
+        <div class="dialog-actions">
+          <button class="gold-button" id="yes-button" type="button">SIM, TÔ CERTA!</button>
+          <button class="no-button" id="no-button" type="button">NÃO, DEIXA EU PENSAR</button>
+        </div>
+      </div>
+    </div>
+    <p class="victory-message" id="victory-message" hidden>PARABÉNS, MARIANA! VOCÊ GANHOU O SEU PRESENTE!</p>
+    <div class="end-controls" id="end-controls" hidden><button class="gold-button" id="replay-button" type="button"></button></div>
+    <button class="sound-button" id="sound-button" type="button" aria-label="Desligar som" title="Desligar som">🔊</button>
+  </main>
+  <script>
+    // Ajuste aqui o ponto de entrada do refrão da música de vitória (em segundos).
+    const VICTORY_START = 0; // o arquivo audio/vitoria.mp3 já foi cortado pra começar no refrão (76 s da original)
+
+    const QUESTIONS = [
+      { image: 'img/p1_nome.jpg', alt: 'Pergunta 1: Qual seu nome? Valendo R$ 1 mil.', correct: 'A' },
+      { image: 'img/p2_cidade.jpg', alt: 'Pergunta 2: Qual é a sua cidade?', correct: 'A' },
+      { image: 'img/p3_pai.jpg', alt: 'Pergunta final: Qual apelido do seu pai? Valendo o presente de aniversário.', correct: 'C' }
+    ];
+    const IMAGES = ['img/inicio.jpg', ...QUESTIONS.map(q => q.image), 'img/vitoria1_silvio.jpg', 'img/vitoria2_oscar.jpg', 'img/errou.jpg'];
+    const AUDIO_FILES = {
+      background: 'audio/fundo.mp3', victory: 'audio/vitoria.mp3',
+      ask: 'audio/posso-perguntar.mp3', sure: 'audio/esta-certo-disso.mp3',
+      correct: 'audio/certa-resposta.mp3', wrong: 'audio/que-pena-voce-errou.mp3'
+    };
+    const media = Object.fromEntries(Object.entries(AUDIO_FILES).map(([key, src]) => {
+      const audio = new Audio(src);
+      audio.preload = 'auto';
+      audio.load();
+      return [key, audio];
+    }));
+    const preloadedImages = IMAGES.map(src => { const image = new Image(); image.src = src; return image; });
+    media.background.loop = true;
+    media.background.volume = .25;
+    media.victory.volume = 0;
+
+    const stage = document.getElementById('stage');
+    const scenes = [document.getElementById('scene-a'), document.getElementById('scene-b')];
+    const answers = document.getElementById('answers');
+    const answerButtons = [...answers.querySelectorAll('.answer')];
+    const intro = document.getElementById('start-button');
+    const dialog = document.getElementById('dialog-wrap');
+    const yesButton = document.getElementById('yes-button');
+    const noButton = document.getElementById('no-button');
+    const victoryMessage = document.getElementById('victory-message');
+    const endControls = document.getElementById('end-controls');
+    const replayButton = document.getElementById('replay-button');
+    const soundButton = document.getElementById('sound-button');
+    const canvas = document.getElementById('confetti');
+    const ctx = canvas.getContext('2d');
+    let visibleScene = 0;
+    let mode = 'intro';
+    let questionIndex = 0;
+    let selected = null;
+    let victoryImage = 0;
+    let muted = false;
+    let runId = 0;
+    let virtualOffset = 0;
+    let scheduled = [];
+    let speechActive = false;
+    const fadeFrames = new Map();
+    let confettiFrame = 0;
+    let confetti = [];
+
+    function clockNow() { return performance.now() + virtualOffset; }
+    function schedule(ms, fn) {
+      const task = { due: clockNow() + ms, runId, fn, done: false, timer: 0 };
+      task.timer = setTimeout(() => executeTask(task), ms);
+      scheduled.push(task);
+      return task;
+    }
+    function executeTask(task) {
+      if (task.done) return;
+      task.done = true;
+      clearTimeout(task.timer);
+      scheduled = scheduled.filter(item => item !== task);
+      if (task.runId === runId) task.fn();
+    }
+    function clearSchedule() {
+      scheduled.forEach(task => clearTimeout(task.timer));
+      scheduled = [];
+      runId++;
+    }
+    window.advanceTime = function (ms) {
+      virtualOffset += Math.max(0, Number(ms) || 0);
+      let due;
+      while ((due = scheduled.filter(task => task.due <= clockNow()).sort((a, b) => a.due - b.due)[0])) executeTask(due);
+      drawConfetti();
+    };
+    window.render_game_to_text = function () {
+      return JSON.stringify({ mode, question: mode === 'intro' || mode === 'victory' || mode === 'error' ? null : questionIndex + 1, selected, correct: mode === 'intro' || mode === 'victory' || mode === 'error' ? null : QUESTIONS[questionIndex].correct, victoryImage: mode === 'victory' ? victoryImage + 1 : null, muted, coordinates: 'Botões A–D sobre a imagem; origem no canto superior esquerdo, x para a direita e y para baixo.' });
+    };
+
+    function showImage(src, alt) {
+      const next = 1 - visibleScene;
+      scenes[next].src = src;
+      scenes[next].alt = alt;
+      scenes[next].classList.add('visible');
+      scenes[visibleScene].classList.remove('visible');
+      visibleScene = next;
+    }
+    function clearAnswerStyles() { answerButtons.forEach(button => button.classList.remove('selected', 'suspense', 'correct', 'wrong')); }
+    function buttonFor(letter) { return answerButtons.find(button => button.dataset.letter === letter); }
+    function updateBackgroundVolume() { media.background.volume = speechActive ? .12 : .25; }
+    function stopSpeech() {
+      for (const key of ['ask', 'sure', 'correct', 'wrong']) { media[key].pause(); media[key].onended = null; }
+      speechActive = false;
+      updateBackgroundVolume();
+    }
+    function speak(key) {
+      stopSpeech();
+      const audio = media[key];
+      audio.dataset.inUse = '1';
+      audio.muted = muted;
+      try { audio.currentTime = 0; } catch (_) {}
+      speechActive = true;
+      updateBackgroundVolume();
+      audio.onended = () => { speechActive = false; updateBackgroundVolume(); };
+      audio.play().catch(() => { speechActive = false; updateBackgroundVolume(); });
+    }
+    function stopFade(audio) {
+      cancelAnimationFrame(fadeFrames.get(audio) || 0);
+      fadeFrames.delete(audio);
+    }
+    function fadeAudio(audio, from, to, duration, finished) {
+      stopFade(audio);
+      const start = performance.now();
+      audio.volume = from;
+      function frame(now) {
+        const progress = Math.min(1, (now - start) / duration);
+        audio.volume = from + (to - from) * progress;
+        if (progress < 1) fadeFrames.set(audio, requestAnimationFrame(frame));
+        else { fadeFrames.delete(audio); if (finished) finished(); }
+      }
+      fadeFrames.set(audio, requestAnimationFrame(frame));
+    }
+    function applyMute() {
+      Object.values(media).forEach(audio => { audio.muted = muted; });
+      soundButton.textContent = muted ? '🔇' : '🔊';
+      soundButton.setAttribute('aria-label', muted ? 'Ligar som' : 'Desligar som');
+      soundButton.title = muted ? 'Ligar som' : 'Desligar som';
+    }
+    function unlockAudio() {
+      const attempts = [];
+      for (const [key, audio] of Object.entries(media)) {
+        if (key === 'background' || key === 'ask') continue;
+        audio.muted = true;
+        const attempt = audio.play();
+        if (attempt && typeof attempt.then === 'function') {
+          attempts.push(attempt.then(() => { if (audio.dataset.inUse) return; audio.pause(); try { audio.currentTime = 0; } catch (_) {} audio.muted = muted; })
+            .catch(() => { audio.muted = muted; }));
+        } else { audio.pause(); audio.muted = muted; }
+      }
+      return Promise.all(attempts);
+    }
+    function beginBackground() {
+      stopFade(media.background);
+      stopFade(media.victory);
+      media.victory.pause();
+      media.victory.currentTime = 0;
+      media.background.volume = .25;
+      media.background.play().catch(() => {});
+    }
+    function showQuestion(index) {
+      mode = 'question';
+      questionIndex = index;
+      selected = null;
+      clearAnswerStyles();
+      dialog.hidden = true;
+      endControls.hidden = true;
+      victoryMessage.hidden = true;
+      stage.classList.remove('intro', 'victory');
+      showImage(QUESTIONS[index].image, QUESTIONS[index].alt);
+      answers.hidden = false;
+      questionShownAt = performance.now();
+      speak('ask');
+    }
+    function restart() {
+      clearSchedule();
+      stopConfetti();
+      stopSpeech();
+      beginBackground();
+      showQuestion(0);
+    }
+    let questionShownAt = 0;
+    function choose(letter) {
+      if (mode !== 'question' || performance.now() - questionShownAt < 700) return;
+      selected = letter;
+      mode = 'dialog';
+      clearAnswerStyles();
+      buttonFor(letter).classList.add('selected');
+      dialog.hidden = false;
+      speak('sure');
+      yesButton.focus();
+    }
+    function cancelChoice() {
+      if (mode !== 'dialog') return;
+      dialog.hidden = true;
+      selected = null;
+      clearAnswerStyles();
+      mode = 'question';
+      stopSpeech();
+    }
+    function confirmChoice() {
+      if (mode !== 'dialog' || !selected) return;
+      dialog.hidden = true;
+      stopSpeech();
+      mode = 'suspense';
+      buttonFor(selected).classList.add('suspense');
+      schedule(1500, revealAnswer);
+    }
+    function revealAnswer() {
+      buttonFor(selected).classList.remove('suspense', 'selected');
+      if (selected === QUESTIONS[questionIndex].correct) {
+        mode = 'correct';
+        buttonFor(selected).classList.add('correct');
+        speak('correct');
+        schedule(2000, () => questionIndex < QUESTIONS.length - 1 ? showQuestion(questionIndex + 1) : showVictory());
+      } else {
+        mode = 'wrong';
+        buttonFor(selected).classList.add('wrong');
+        buttonFor(QUESTIONS[questionIndex].correct).classList.add('correct');
+        speak('wrong');
+        schedule(2000, showError);
+      }
+    }
+    function showError() {
+      mode = 'error';
+      answers.hidden = true;
+      showImage('img/errou.jpg', 'Que pena, você errou. Tente de novo.');
+      replayButton.textContent = 'TENTAR DE NOVO';
+      endControls.hidden = false;
+    }
+    function playVictory() {
+      const audio = media.victory;
+      audio.dataset.inUse = '1';
+      audio.muted = muted;
+      const thisRun = runId;
+      const start = () => {
+        if (thisRun !== runId || mode !== 'victory') return;
+        try { audio.currentTime = VICTORY_START; } catch (_) {}
+        audio.volume = 0;
+        audio.play().then(() => fadeAudio(audio, 0, .8, 700)).catch(() => {});
+      };
+      if (audio.readyState >= 1) start();
+      else audio.addEventListener('loadedmetadata', start, { once: true });
+    }
+    function showVictory() {
+      mode = 'victory';
+      answers.hidden = true;
+      stage.classList.add('victory');
+      victoryImage = 0;
+      showImage('img/vitoria1_silvio.jpg', 'Silvio Santos entrega o Oscar à Mariana.');
+      victoryMessage.hidden = false;
+      replayButton.textContent = 'JOGAR DE NOVO';
+      endControls.hidden = false;
+      stopSpeech();
+      fadeAudio(media.background, media.background.volume, 0, 1000, () => { media.background.pause(); media.background.volume = .25; });
+      playVictory();
+      startConfetti();
+      schedule(6000, () => { if (mode === 'victory' && victoryImage === 0) switchVictoryImage(); });
+    }
+    function switchVictoryImage() {
+      if (mode !== 'victory') return;
+      victoryImage = 1 - victoryImage;
+      showImage(victoryImage ? 'img/vitoria2_oscar.jpg' : 'img/vitoria1_silvio.jpg', victoryImage ? 'Mariana com seu Oscar.' : 'Silvio Santos entrega o Oscar à Mariana.');
+    }
+
+    function resizeCanvas() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(innerWidth * dpr);
+      canvas.height = Math.round(innerHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function startConfetti() {
+      resizeCanvas();
+      confetti = Array.from({ length: 85 }, () => ({
+        x: Math.random() * innerWidth, y: Math.random() * innerHeight - innerHeight,
+        vx: (Math.random() - .5) * 1.1, vy: 1.2 + Math.random() * 2.1,
+        w: 3 + Math.random() * 5, h: 5 + Math.random() * 8,
+        spin: Math.random() * Math.PI * 2, speed: .025 + Math.random() * .06,
+        color: ['#f5c518', '#ffe681', '#c8860d', '#fff2ba'][Math.floor(Math.random() * 4)]
+      }));
+      function loop() {
+        drawConfetti();
+        if (mode === 'victory') confettiFrame = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+    function drawConfetti() {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      if (mode !== 'victory') return;
+      for (const piece of confetti) {
+        piece.x += piece.vx + Math.sin(piece.spin) * .35;
+        piece.y += piece.vy;
+        piece.spin += piece.speed;
+        if (piece.y > innerHeight + 12) { piece.y = -12; piece.x = Math.random() * innerWidth; }
+        ctx.save();
+        ctx.translate(piece.x, piece.y);
+        ctx.rotate(piece.spin);
+        ctx.fillStyle = piece.color;
+        ctx.globalAlpha = .75 + .25 * Math.sin(piece.spin) ** 2;
+        ctx.fillRect(-piece.w / 2, -piece.h / 2, piece.w, piece.h);
+        ctx.restore();
+      }
+    }
+    function stopConfetti() {
+      cancelAnimationFrame(confettiFrame);
+      confettiFrame = 0;
+      confetti = [];
+      if (ctx) ctx.clearRect(0, 0, innerWidth, innerHeight);
+    }
+
+    answerButtons.forEach(button => button.addEventListener('click', () => choose(button.dataset.letter)));
+    document.getElementById('start-button').addEventListener('click', () => {
+      if (mode !== 'intro') return;
+      beginBackground();
+      unlockAudio();
+      intro.hidden = true;
+      showQuestion(0);
+    });
+    yesButton.addEventListener('click', confirmChoice);
+    noButton.addEventListener('click', cancelChoice);
+    replayButton.addEventListener('click', restart);
+    soundButton.addEventListener('click', () => { muted = !muted; applyMute(); });
+    stage.addEventListener('click', event => {
+      if (mode === 'victory' && event.target.classList.contains('scene')) switchVictoryImage();
+    });
+    window.addEventListener('keydown', event => {
+      const key = event.key.toUpperCase();
+      if (mode === 'question' && ['A', 'B', 'C', 'D'].includes(key)) { event.preventDefault(); choose(key); }
+      else if (mode === 'dialog' && event.key === 'Enter') { event.preventDefault(); confirmChoice(); }
+      else if (mode === 'dialog' && event.key === 'Escape') { event.preventDefault(); cancelChoice(); }
+    });
+    window.addEventListener('resize', () => { if (mode === 'victory') resizeCanvas(); });
+    applyMute();
+  </script>
+</body>
+</html>
