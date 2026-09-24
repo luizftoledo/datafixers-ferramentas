@@ -25,7 +25,9 @@
     .answer[data-letter="B"] { top: 44.90566%; }
     .answer[data-letter="C"] { top: 51.41509%; }
     .answer[data-letter="D"] { top: 57.73585%; }
-    .answer:hover, .answer:focus-visible { outline: none; border-color: #ffdf75; background: #ffcf3329; box-shadow: 0 0 17px #ffd44eaa, inset 0 0 12px #ffd44e77; }
+    .answer:focus { outline: none; }
+    @media (hover: hover) { .answer:hover { border-color: #ffdf75; background: #ffcf3329; box-shadow: 0 0 17px #ffd44eaa, inset 0 0 12px #ffd44e77; } }
+    .answer:focus-visible { outline: none; border-color: #ffdf75; background: #ffcf3329; box-shadow: 0 0 17px #ffd44eaa, inset 0 0 12px #ffd44e77; }
     .answer.selected { border-color: #ffce33; background: #ffb70078; box-shadow: 0 0 18px #ffae00c4, inset 0 0 14px #ffe06670; }
     .answer.suspense { animation: blink-gold .35s linear infinite alternate; }
     .answer.correct { animation: blink-green .42s linear infinite alternate; border-color: #52ff82; background: #19c85e96; }
@@ -33,6 +35,8 @@
     @keyframes blink-gold { from { background: #ffac0073; box-shadow: 0 0 5px #ffb900; } to { background: #ffdf30c9; box-shadow: 0 0 25px #ffe274, inset 0 0 20px #fff4ae; } }
     @keyframes blink-green { from { background: #12a64f82; box-shadow: 0 0 6px #39ff77; } to { background: #28e66dcc; box-shadow: 0 0 24px #6dff92, inset 0 0 20px #d3ffdb; } }
     .screen-overlay { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 16px; background: #0209184d; text-align: center; }
+    .rotate-hint { display: none; position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 4; padding: 10px 16px; border: 2px solid var(--gold); border-radius: 999px; background: #071747e6; color: var(--gold); font-size: 14px; white-space: nowrap; pointer-events: none; }
+    @media (orientation: portrait) and (max-width: 700px) { .rotate-hint { display: block; } }
     .screen-overlay[hidden], .answers[hidden], .dialog-wrap[hidden], .end-controls[hidden], .victory-message[hidden] { display: none; }
     .intro-card { width: min(92vw, 600px); padding: clamp(22px, 5vw, 48px); border: 3px solid var(--gold); border-radius: 24px; background: linear-gradient(145deg, #173e91ee, #061438f5); box-shadow: 0 0 35px #f5c51864, inset 0 0 24px #347be866; }
     .intro-card h1 { margin: 0 0 28px; font-size: clamp(2rem, 8vw, 4.8rem); line-height: 1.03; letter-spacing: .02em; color: var(--gold); text-shadow: 0 3px 0 #74420a, 0 0 25px #ffc6279c; }
@@ -71,6 +75,7 @@
         <button class="answer" type="button" data-letter="D" aria-label="Resposta D"></button>
       </div>
     </div>
+    <div class="rotate-hint">📱 Vire o celular de lado pra jogar melhor</div>
     <canvas id="confetti" aria-hidden="true"></canvas>
     <div class="dialog-wrap" id="dialog-wrap" hidden>
       <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
@@ -94,7 +99,7 @@
       { image: 'img/p2_cidade.jpg', alt: 'Pergunta 2: Qual é a sua cidade?', correct: 'A' },
       { image: 'img/p3_pai.jpg', alt: 'Pergunta final: Qual apelido do seu pai? Valendo o presente de aniversário.', correct: 'C' }
     ];
-    const IMAGES = ['img/inicio.jpg', ...QUESTIONS.map(q => q.image), 'img/acertou.jpg', 'img/vitoria1_silvio.jpg', 'img/vitoria2_oscar.jpg', 'img/errou.jpg'];
+    const IMAGES = ['img/inicio.jpg', ...QUESTIONS.map(q => q.image), 'img/acertou.jpg?v=2', 'img/vitoria1_silvio.jpg', 'img/vitoria2_oscar.jpg', 'img/errou.jpg'];
     const AUDIO_FILES = {
       background: 'audio/fundo.mp3', victory: 'audio/vitoria.mp3',
       ask: 'audio/posso-perguntar.mp3', sure: 'audio/esta-certo-disso.mp3',
@@ -272,6 +277,7 @@
       victoryMessage.hidden = true;
       stage.classList.remove('intro', 'victory');
       showImage(QUESTIONS[index].image, QUESTIONS[index].alt);
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       answers.hidden = false;
       questionShownAt = performance.now();
       speak('ask');
@@ -319,7 +325,7 @@
         if (questionIndex < QUESTIONS.length - 1) {
           schedule(1300, () => {
             answers.hidden = true;
-            showImage('img/acertou.jpg', 'Acertou!');
+            showImage('img/acertou.jpg?v=2', 'Acertou!');
             schedule(3000, () => showQuestion(questionIndex + 1));
           });
         } else {
